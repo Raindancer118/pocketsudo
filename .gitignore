@@ -1,0 +1,9 @@
+/dist/
+/data/
+*.apk
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+Project.md
+.idea/
