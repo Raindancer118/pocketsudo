@@ -225,4 +225,5 @@
     <string name="file_accept">Accept</string>
     <string name="file_decline">Decline</string>
     <string name="file_loading">Receiving %1$s …</string>
+    <string name="file_offers_channel">File requests</string>
 </resources>

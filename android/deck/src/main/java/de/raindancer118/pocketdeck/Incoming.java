@@ -21,13 +21,19 @@ import org.json.JSONObject;
  */
 public final class Incoming extends BroadcastReceiver {
     static final String CHANNEL = "files";
+    // offers pop up on screen; a channel's importance can't be raised later, hence its own channel
+    static final String OFFERS = "file_offers";
     private static final String ACCEPT = "de.raindancer118.pocketdeck.ACCEPT_FILE";
     private static final String DECLINE = "de.raindancer118.pocketdeck.DECLINE_FILE";
 
     static void createChannel(Context ctx) {
         NotificationChannel ch = new NotificationChannel(CHANNEL, ctx.getString(R.string.files_channel),
                 NotificationManager.IMPORTANCE_DEFAULT);
-        ctx.getSystemService(NotificationManager.class).createNotificationChannel(ch);
+        NotificationChannel offers = new NotificationChannel(OFFERS, ctx.getString(R.string.file_offers_channel),
+                NotificationManager.IMPORTANCE_HIGH);
+        NotificationManager nm = ctx.getSystemService(NotificationManager.class);
+        nm.createNotificationChannel(ch);
+        nm.createNotificationChannel(offers);
     }
 
     /** An offer arrived: ask first. */
@@ -36,14 +42,31 @@ public final class Incoming extends BroadcastReceiver {
         if (blob.isEmpty()) return;
         int id = blob.hashCode();
         String size = Formatter.formatShortFileSize(ctx, body.optLong("size"));
-        Notification.Builder b = builder(ctx)
+        Notification.Builder b = new Notification.Builder(ctx, OFFERS).setSmallIcon(R.drawable.ic_launcher_mono)
+                .setCategory(Notification.CATEGORY_MESSAGE)
                 .setContentTitle(ctx.getString(R.string.file_offer_title, deck.hostName()))
                 .setContentText(ctx.getString(R.string.file_offer_text, name, size))
                 .setAutoCancel(false)
                 .setTimeoutAfter(15 * 60 * 1000L) // the relay drops it then anyway
                 .addAction(new Notification.Action.Builder(null, ctx.getString(R.string.file_accept), action(ctx, ACCEPT, id, blob, name)).build())
                 .addAction(new Notification.Action.Builder(null, ctx.getString(R.string.file_decline), action(ctx, DECLINE, id, blob, name)).build());
+        android.graphics.Bitmap thumb = thumb(body.optString("thumb"));
+        if (thumb != null) {
+            // pictures show what is coming before it is accepted
+            b.setLargeIcon(thumb).setStyle(new Notification.BigPictureStyle().bigPicture(thumb)
+                    .setSummaryText(ctx.getString(R.string.file_offer_text, name, size)));
+        }
         notify(ctx, id, b);
+    }
+
+    private static android.graphics.Bitmap thumb(String b64) {
+        if (b64.isEmpty()) return null;
+        try {
+            byte[] jpg = android.util.Base64.decode(b64, android.util.Base64.DEFAULT);
+            return android.graphics.BitmapFactory.decodeByteArray(jpg, 0, jpg.length);
+        } catch (IllegalArgumentException e) {
+            return null;
+        }
     }
 
     private static PendingIntent action(Context ctx, String what, int id, String blob, String name) {
