@@ -28,6 +28,18 @@ type fakeSys struct {
 	calls []string
 	out   map[string]string
 	lines chan string // what the clipboard watcher "sees"
+	pipe  func(name string, args ...string) io.ReadCloser
+}
+
+func (f *fakeSys) Pipe(_ context.Context, name string, args ...string) (io.ReadCloser, error) {
+	f.mu.Lock()
+	f.calls = append(f.calls, strings.TrimSpace(name+" "+strings.Join(args, " ")))
+	p := f.pipe
+	f.mu.Unlock()
+	if p == nil {
+		return io.NopCloser(strings.NewReader("")), nil
+	}
+	return p(name, args...), nil
 }
 
 func (f *fakeSys) Run(_ context.Context, name string, args ...string) (string, error) {

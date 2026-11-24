@@ -2,11 +2,14 @@ package deck
 
 import (
 	"context"
+	"io"
+
 	"crypto/ecdsa"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/pion/webrtc/v4"
 	"log/slog"
 	"os"
 	"strings"
@@ -23,6 +26,9 @@ type System interface {
 	Start(ctx context.Context, name string, args ...string) error // detached, no output
 	// Stream runs a long-lived command and calls onLine for each output line.
 	Stream(ctx context.Context, onLine func(string), name string, args ...string) error
+	// Pipe starts a command and hands over its stdout (video, audio); closing
+	// the reader or ending ctx stops the command.
+	Pipe(ctx context.Context, name string, args ...string) (io.ReadCloser, error)
 }
 
 // Result is the body of every answer to the phone.
@@ -48,6 +54,8 @@ type Agent struct {
 	mu           sync.Mutex
 	sessionUntil time.Time
 	lastClip     string // last text that came from the phone, so it is not echoed back
+	stream       *streamer
+	iceServers   []webrtc.ICEServer
 }
 
 func NewAgent(cfg *Config, sys System, log *slog.Logger) (*Agent, error) {
@@ -69,7 +77,7 @@ func NewAgent(cfg *Config, sys System, log *slog.Logger) (*Agent, error) {
 	hn, _ := os.Hostname()
 	return &Agent{cfg: cfg, sys: sys, log: log, key: key, phonePub: pub,
 		client: host.NewClient(cfg.Relay, cfg.HostToken), guard: protocol.NewReplayGuard(),
-		batteryDir: "/sys/class/power_supply", hostname: hn, downloadDir: defaultDownloadDir(), home: homeDir()}, nil
+		batteryDir: "/sys/class/power_supply", hostname: hn, downloadDir: defaultDownloadDir(), home: homeDir(), iceServers: defaultICE()}, nil
 }
 
 // Run long-polls the host inbox until ctx ends.
@@ -201,6 +209,13 @@ func (a *Agent) reply(ctx context.Context, ref, typ string, body any) {
 	}
 }
 
+type authedKey struct{}
+
+func isAuthed(ctx context.Context) bool {
+	v, _ := ctx.Value(authedKey{}).(bool)
+	return v
+}
+
 var (
 	errNeedsFinger  = errors.New("needs your fingerprint")
 	errNeedsSession = errors.New("open remote control with your fingerprint first")
@@ -225,7 +240,7 @@ func (a *Agent) dispatch(ctx context.Context, m protocol.DeckMessage) (json.RawM
 	if act.session && !authed && !a.sessionActive() {
 		return nil, errNeedsSession
 	}
-	return act.fn(a, ctx, m.Body)
+	return act.fn(a, context.WithValue(ctx, authedKey{}, authed), m.Body)
 }
 
 // Chain is a shortcut: steps run in order, the first failure stops it.

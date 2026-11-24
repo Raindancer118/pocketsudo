@@ -52,6 +52,8 @@ func init() {
 		"file.put":       {fn: (*Agent).filePut},
 		"fs.list":        {session: true, fn: (*Agent).fsList},
 		"fs.get":         {session: true, fn: (*Agent).fsGet},
+		"stream.start":   {session: true, fn: (*Agent).streamStart},
+		"stream.stop":    {fn: (*Agent).streamStop},
 	}
 }
 

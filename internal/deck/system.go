@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -102,4 +103,30 @@ func (d *Desktop) Stream(ctx context.Context, onLine func(string), name string, 
 		onLine(sc.Text())
 	}
 	return cmd.Wait()
+}
+
+type pipeReader struct {
+	io.ReadCloser
+	cmd *exec.Cmd
+}
+
+func (p *pipeReader) Close() error {
+	p.ReadCloser.Close()
+	if p.cmd.Process != nil {
+		p.cmd.Process.Kill()
+	}
+	return p.cmd.Wait()
+}
+
+func (d *Desktop) Pipe(ctx context.Context, name string, args ...string) (io.ReadCloser, error) {
+	cmd := exec.CommandContext(ctx, name, args...)
+	cmd.Env = d.env
+	out, err := cmd.StdoutPipe()
+	if err != nil {
+		return nil, err
+	}
+	if err := cmd.Start(); err != nil {
+		return nil, fmt.Errorf("%s: %w", name, err)
+	}
+	return &pipeReader{ReadCloser: out, cmd: cmd}, nil
 }
