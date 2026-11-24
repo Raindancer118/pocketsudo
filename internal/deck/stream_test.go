@@ -99,8 +99,9 @@ func TestScreenStream(t *testing.T) {
 	case <-time.After(10 * time.Second):
 		t.Fatal("no video arrived")
 	}
-	if !r.sys.ran("wf-recorder") {
-		t.Fatal("screen capture not started")
+	// -D: Hyprland sends no frame at all for a still screen otherwise, and the stream stays black
+	if !r.sys.ran("wf-recorder -o eDP-1 -D") {
+		t.Fatalf("screen capture not continuous: %v", r.sys.calls)
 	}
 
 	// a tap in the middle of the stream clicks the middle of eDP-1 (logical coords)

@@ -366,8 +366,10 @@ func (a *Agent) pumpVideo(ctx context.Context, track *webrtc.TrackLocalStaticSam
 			"-vaapi_device", "/dev/dri/renderD128", "-vf", "format=nv12,hwupload",
 			"-c:v", "h264_vaapi", "-profile:v", "constrained_baseline", "-g", "30", "-bf", "0", "-f", "h264", "-")
 	} else {
-		rc, err = a.sys.Pipe(ctx, "wf-recorder", "-o", mon.Name, "-m", "h264", "-c", "h264_vaapi",
-			"-d", "/dev/dri/renderD128", "-r", "30", "-p", "profile=constrained_baseline", "-p", "g=30", "-p", "bf=0",
+		// -D: without it a still screen yields no frame at all (stream stays black). A still
+		// frame then costs ~20 bytes; the keyframes dominate, hence one every 5 s (~1 Mbit/s idle).
+		rc, err = a.sys.Pipe(ctx, "wf-recorder", "-o", mon.Name, "-D", "-m", "h264", "-c", "h264_vaapi",
+			"-d", "/dev/dri/renderD128", "-r", "30", "-p", "profile=constrained_baseline", "-p", "g=150", "-p", "bf=0",
 			"-p", "b=3M", "-p", "maxrate=4M", "-p", "rc_mode=VBR",
 			"-f", "/dev/stdout", "-y")
 	}
