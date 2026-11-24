@@ -158,4 +158,9 @@
         <item quantity="other">Packt %1$d Einträge …</item>
     </plurals>
     <string name="switch_source">Quelle wechseln</string>
+    <string name="apps">Apps</string>
+    <string name="tile_apps">Apps</string>
+    <string name="apps_search">App suchen …</string>
+    <string name="app_started">%1$s gestartet</string>
+    <string name="mod_hold_hint">Halten drückt die Taste allein (Super öffnet den Starter)</string>
 </resources>

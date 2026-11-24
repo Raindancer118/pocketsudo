@@ -160,4 +160,9 @@
         <item quantity="other">Packing %1$d items …</item>
     </plurals>
     <string name="switch_source">Switch source</string>
+    <string name="apps">Apps</string>
+    <string name="tile_apps">Apps</string>
+    <string name="apps_search">Find an app …</string>
+    <string name="app_started">Started %1$s</string>
+    <string name="mod_hold_hint">Hold a modifier to press it alone (Super opens the launcher)</string>
 </resources>

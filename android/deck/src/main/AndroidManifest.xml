@@ -49,6 +49,11 @@
             android:exported="false" />
 
         <activity
+            android:name=".AppsActivity"
+            android:exported="false"
+            android:windowSoftInputMode="adjustResize" />
+
+        <activity
             android:name=".ShortcutEditActivity"
             android:exported="false"
             android:windowSoftInputMode="adjustResize" />

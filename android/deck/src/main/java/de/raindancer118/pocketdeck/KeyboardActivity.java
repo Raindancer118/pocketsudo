@@ -142,6 +142,14 @@ public class KeyboardActivity extends AppCompatActivity {
                 LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, -1, ((Double) k[2]).floatValue());
                 lp.setMarginEnd(gap);
                 t.setOnClickListener(v -> tap(name));
+                if (isModifier(name)) t.setOnLongClickListener(v -> {
+                    // hold: this modifier alone (Super = launcher), no latching
+                    v.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS);
+                    latched.remove(name);
+                    send(name);
+                    refresh();
+                    return true;
+                });
                 views.computeIfAbsent(name, x -> new ArrayList<>()).add(t);
                 row.addView(t, lp);
             }
@@ -214,7 +222,8 @@ public class KeyboardActivity extends AppCompatActivity {
             }
             comboPreview.setText(p.length() == 0 ? getString(R.string.combo_hint) : p);
         } else {
-            comboPreview.setText("");
+            // a latched modifier: say how to press it on its own
+            comboPreview.setText(latched.isEmpty() ? "" : getString(R.string.mod_hold_hint));
         }
     }
 

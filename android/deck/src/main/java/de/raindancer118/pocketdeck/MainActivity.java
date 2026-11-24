@@ -146,6 +146,7 @@ public class MainActivity extends AppCompatActivity {
                 });
         row(R.id.send_file, R.drawable.ic_file, () -> pick.launch(new String[]{"*/*"}));
         row(R.id.stream, R.drawable.ic_cast, () -> startActivity(new Intent(this, StreamActivity.class)));
+        row(R.id.apps, R.drawable.ic_apps, () -> startActivity(new Intent(this, AppsActivity.class)));
         row(R.id.files, R.drawable.ic_folder, () -> startActivity(new Intent(this, FilesActivity.class)));
         row(R.id.screenshot, R.drawable.ic_screen, () -> startActivity(new Intent(this, ScreenshotActivity.class)));
     }
