@@ -1,0 +1,1 @@
+-keep class de.raindancer118.pocketsudo.** { *; }

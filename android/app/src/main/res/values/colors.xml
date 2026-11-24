@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- House style, light. Neutral ramp without tint; accent 2 (live) is never text. -->
+<resources>
+    <color name="bg">#FAFAFA</color>
+    <color name="surface">#FFFFFF</color>
+    <color name="surface2">#F0F0F0</color>
+    <color name="line">#E1E1E1</color>
+    <color name="line_strong">#C5C5C5</color>
+    <color name="text1">#161616</color>
+    <color name="text2">#4D4D4D</color>
+    <color name="text3">#6C6C6C</color>
+    <color name="ink">#181B1F</color>
+    <color name="on_ink">#FFFFFF</color>
+    <color name="ink_pressed">#2C3036</color>
+    <color name="live">#2E9E52</color>
+    <color name="warn">#B07A00</color>
+    <color name="err">#B6322D</color>
+</resources>

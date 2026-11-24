@@ -1,0 +1,70 @@
+plugins {
+    id "com.android.application"
+}
+
+// Release signing comes from CI secrets; local builds are debug-signed.
+def ks = System.getenv("POCKETSUDO_KEYSTORE")
+
+android {
+    namespace "de.raindancer118.pocketsudo"
+    compileSdk 36
+
+    defaultConfig {
+        applicationId "de.raindancer118.pocketsudo"
+        // setUserAuthenticationParameters (per-use biometric keys) needs API 30
+        minSdk 30
+        targetSdk 36
+        versionCode Integer.parseInt(System.getenv("POCKETSUDO_VERSION_CODE") ?: "1")
+        versionName System.getenv("POCKETSUDO_VERSION_NAME") ?: "0.1.0-dev"
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    signingConfigs {
+        if (ks) {
+            release {
+                storeFile file(ks)
+                storePassword System.getenv("POCKETSUDO_KEYSTORE_PASSWORD")
+                keyAlias System.getenv("POCKETSUDO_KEY_ALIAS") ?: "pocketsudo"
+                keyPassword System.getenv("POCKETSUDO_KEY_PASSWORD") ?: System.getenv("POCKETSUDO_KEYSTORE_PASSWORD")
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled true
+            shrinkResources true
+            proguardFiles getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro"
+            signingConfig ks ? signingConfigs.release : signingConfigs.debug
+        }
+    }
+
+    buildFeatures {
+        buildConfig true
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    lint {
+        abortOnError true
+        warningsAsErrors false
+    }
+
+    testOptions {
+        unitTests.returnDefaultValues = true
+    }
+}
+
+dependencies {
+    implementation "androidx.appcompat:appcompat:1.8.0"
+    implementation "androidx.biometric:biometric:1.1.0"
+    implementation "androidx.core:core:1.17.0"
+    implementation platform("com.google.firebase:firebase-bom:35.2.0")
+    implementation "com.google.firebase:firebase-messaging"
+    implementation "com.google.android.gms:play-services-code-scanner:16.1.0"
+    testImplementation "junit:junit:4.13.2"
+    testImplementation "org.json:json:20260814"
+}

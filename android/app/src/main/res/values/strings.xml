@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name" translatable="false">PocketSudo</string>
+    <string name="ready">Ready</string>
+    <string name="history">History</string>
+    <string name="pair_another">Pair another notebook</string>
+    <string name="on_notebook">On the notebook</string>
+    <string name="scan">Scan code</string>
+    <string name="theme_toggle">Switch light and dark</string>
+    <string name="back">Back</string>
+    <string name="issue_notifications">Notifications are off, requests can\'t reach you</string>
+    <string name="fix_notifications">Allow notifications</string>
+    <string name="issue_battery">Samsung can put the app to sleep and delay requests</string>
+    <string name="fix_battery">Turn off battery optimization</string>
+    <string name="issue_fullscreen">Requests don\'t open on the lock screen</string>
+    <string name="fix_fullscreen">Allow full-screen requests</string>
+    <string name="issue_push">No push from this relay, requests only show while the app is open</string>
+    <string name="issue_key">Fingerprints changed on this phone, pair %1$s again</string>
+    <string name="service_on_host">%1$s on %2$s</string>
+    <string name="code_hint">Code in the terminal</string>
+    <string name="approve">Approve</string>
+    <string name="deny">Deny</string>
+    <string name="ssh_from">Via SSH from %1$s</string>
+    <string name="ssh">Via SSH</string>
+    <string name="expired">Expired</string>
+    <string name="approved">Approved</string>
+    <string name="approved_finger">Approved with fingerprint</string>
+    <string name="denied">Denied</string>
+    <string name="decided_elsewhere">Decided on the notebook</string>
+    <string name="sending">Sending …</string>
+    <string name="send_failed">Not sent, check the connection and try again</string>
+    <string name="gone">The request no longer exists</string>
+    <string name="bio_title">Approve %1$s on %2$s</string>
+    <string name="cancel">Cancel</string>
+    <string name="bad_signature">Request with invalid signature discarded</string>
+    <string name="pair_connecting">Connecting to %1$s …</string>
+    <string name="pair_compare">Same code in the terminal?</string>
+    <string name="pair_confirm_there">Confirm there with y</string>
+    <string name="pair_done">Paired with %1$s</string>
+    <string name="pair_rejected">Rejected on the notebook</string>
+    <string name="pair_failed">Pairing failed: %1$s</string>
+    <string name="pair_wrong_host">The notebook\'s key doesn\'t match the code, aborted</string>
+    <string name="pair_used">Code already used, start pair again on the notebook</string>
+    <string name="pair_insecure">The relay must use https</string>
+    <string name="not_a_code">Not a PocketSudo code</string>
+    <string name="no_biometric">Set up a fingerprint on this phone first</string>
+    <string name="done">Done</string>
+    <string name="unpair_title">Unpair %1$s?</string>
+    <string name="unpair_body">Requests from this notebook will no longer reach this phone. The notebook keeps working with password and fingerprint reader.</string>
+    <string name="unpair">Unpair</string>
+    <string name="history_empty">No requests yet</string>
+    <string name="channel_requests">Requests</string>
+    <string name="channel_requests_desc">sudo requests waiting for your fingerprint</string>
+    <string name="notif_title">%1$s on %2$s</string>
+    <string name="notif_loading">Loading request …</string>
+    <string name="notif_code">Code %1$s</string>
+    <string name="notif_from">Request from %1$s</string>
+    <string name="history_meta" translatable="false">%1$s · %2$s · %3$s</string>
+</resources>
