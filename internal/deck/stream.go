@@ -1,13 +1,17 @@
 package deck
 
 import (
+	"bufio"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"math"
+	"os"
+	"path/filepath"
 	"regexp"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -359,24 +363,46 @@ func (a *Agent) streamSwitch(ctx context.Context, body json.RawMessage) (json.Ra
 }
 
 // pumpVideo feeds H.264 from wf-recorder (screen) or ffmpeg (camera) into the track.
+// encoder is one way to produce H.264 for a stream.
+type encoder struct {
+	name string // vaapi, nvenc, x264
+	cmd  []string
+}
+
 func (a *Agent) pumpVideo(ctx context.Context, track *webrtc.TrackLocalStaticSample, mon monitor, device string) {
-	var rc io.ReadCloser
-	var err error
+	var kind string
+	var vaapi, nvenc, x264 encoder
 	if device != "" {
-		rc, err = a.sys.Pipe(ctx, "ffmpeg", "-hide_banner", "-loglevel", "error",
-			"-f", "v4l2", "-input_format", "mjpeg", "-framerate", "30", "-video_size", "1280x720", "-i", device,
-			"-vaapi_device", "/dev/dri/renderD128", "-vf", "format=nv12,hwupload",
-			"-c:v", "h264_vaapi", "-profile:v", "constrained_baseline", "-g", "30", "-bf", "0", "-f", "h264", "-")
+		kind = "camera"
+		in := []string{"ffmpeg", "-hide_banner", "-loglevel", "error",
+			"-f", "v4l2", "-input_format", "mjpeg", "-framerate", "30", "-video_size", "1280x720", "-i", device}
+		vaapi = encoder{"vaapi", append(slices.Clone(in), "-vaapi_device", "/dev/dri/renderD128", "-vf", "format=nv12,hwupload",
+			"-c:v", "h264_vaapi", "-profile:v", "constrained_baseline", "-g", "30", "-bf", "0", "-f", "h264", "-")}
+		nvenc = encoder{"nvenc", append(slices.Clone(in), "-c:v", "h264_nvenc", "-preset", "p1", "-tune", "ull",
+			"-profile:v", "baseline", "-zerolatency", "1", "-g", "30", "-bf", "0", "-f", "h264", "-")}
+		x264 = encoder{"x264", append(slices.Clone(in), "-c:v", "libx264", "-preset", "ultrafast", "-tune", "zerolatency",
+			"-profile:v", "baseline", "-pix_fmt", "yuv420p", "-g", "30", "-bf", "0", "-f", "h264", "-")}
 	} else {
+		kind = "screen"
 		// -D: without it a still screen yields no frame at all (stream stays black). A still
 		// frame then costs ~20 bytes; the keyframes dominate, hence one every 5 s (~1 Mbit/s idle).
-		rc, err = a.sys.Pipe(ctx, "wf-recorder", "-o", mon.Name, "-D", "-m", "h264", "-c", "h264_vaapi",
-			"-d", "/dev/dri/renderD128", "-r", "30", "-p", "profile=constrained_baseline", "-p", "g=150", "-p", "bf=0",
-			"-p", "b=3M", "-p", "maxrate=4M", "-p", "rc_mode=VBR",
-			"-f", "/dev/stdout", "-y")
+		base := []string{"wf-recorder", "-o", mon.Name, "-D", "-m", "h264"}
+		tail := []string{"-r", "30", "-p", "g=150", "-p", "bf=0", "-p", "b=3M", "-f", "/dev/stdout", "-y"}
+		vaapi = encoder{"vaapi", slices.Concat(base, []string{"-c", "h264_vaapi", "-d", "/dev/dri/renderD128",
+			"-p", "profile=constrained_baseline", "-p", "maxrate=4M", "-p", "rc_mode=VBR"}, tail)}
+		nvenc = encoder{"nvenc", slices.Concat(base, []string{"-c", "h264_nvenc", "-p", "preset=p1", "-p", "tune=ull",
+			"-p", "profile=baseline", "-p", "zerolatency=1"}, tail)}
+		x264 = encoder{"x264", slices.Concat(base, []string{"-c", "libx264", "-p", "preset=ultrafast", "-p", "tune=zerolatency",
+			"-p", "profile=baseline"}, tail)}
 	}
-	if err != nil {
-		a.log.Warn("video capture", "err", err)
+	// NVENC is free while the NVIDIA GPU is awake anyway (compositor, vela …) but
+	// would wake it on battery otherwise; software encoding is the last resort (~1 core).
+	cands := []encoder{vaapi, nvenc, x264}
+	if a.gpuAwake() {
+		cands = []encoder{nvenc, vaapi, x264}
+	}
+	rc := a.openEncoder(ctx, kind, cands)
+	if rc == nil {
 		return
 	}
 	defer rc.Close()
@@ -394,6 +420,62 @@ func (a *Agent) pumpVideo(ctx context.Context, track *webrtc.TrackLocalStaticSam
 			return
 		}
 	}
+}
+
+// openEncoder starts the first encoder that delivers data. A driver or ffmpeg
+// update can break one (VAAPI with ffmpeg 9.1, Nov 2026); encoders that failed
+// are skipped for later streams until the agent restarts.
+func (a *Agent) openEncoder(ctx context.Context, kind string, cands []encoder) io.ReadCloser {
+	for _, e := range cands {
+		key := kind + ":" + e.name
+		a.mu.Lock()
+		bad := a.badEncoders[key]
+		a.mu.Unlock()
+		if bad {
+			continue
+		}
+		ectx, cancel := context.WithCancel(ctx)
+		rc, err := a.sys.Pipe(ectx, e.cmd[0], e.cmd[1:]...)
+		if err == nil {
+			br := bufio.NewReader(rc)
+			peeked := make(chan error, 1)
+			go func() {
+				_, err := br.Peek(1)
+				peeked <- err
+			}()
+			select {
+			case err = <-peeked:
+			case <-time.After(a.encoderProbe):
+				err = errors.New("no frame in time")
+			}
+			if err == nil {
+				return &encoderPipe{Reader: br, rc: rc, cancel: cancel}
+			}
+			rc.Close()
+		}
+		cancel()
+		if ctx.Err() != nil {
+			return nil
+		}
+		a.log.Warn("video encoder failed, trying the next", "kind", kind, "encoder", e.name, "err", err)
+		a.mu.Lock()
+		a.badEncoders[key] = true
+		a.mu.Unlock()
+	}
+	a.log.Warn("no video encoder works", "kind", kind)
+	return nil
+}
+
+type encoderPipe struct {
+	io.Reader
+	rc     io.ReadCloser
+	cancel context.CancelFunc
+}
+
+func (e *encoderPipe) Close() error {
+	err := e.rc.Close()
+	e.cancel()
+	return err
 }
 
 // pumpAudio sends Opus from PipeWire: what the computer plays, or its microphone.
@@ -491,4 +573,21 @@ func opusStereo(sdp string) string {
 	}
 	i := strings.Index(sdp, m[0]) + len(m[0])
 	return sdp[:i] + "\r\na=fmtp:" + m[1] + " stereo=1;sprop-stereo=1" + sdp[i:]
+}
+
+// nvidiaAwake: is an NVIDIA GPU powered up right now (runtime PM "active")?
+func nvidiaAwake() bool {
+	devs, _ := filepath.Glob("/sys/bus/pci/devices/*")
+	for _, d := range devs {
+		vendor, _ := os.ReadFile(filepath.Join(d, "vendor"))
+		class, _ := os.ReadFile(filepath.Join(d, "class"))
+		if strings.TrimSpace(string(vendor)) != "0x10de" || !strings.HasPrefix(string(class), "0x03") {
+			continue
+		}
+		st, _ := os.ReadFile(filepath.Join(d, "power", "runtime_status"))
+		if strings.TrimSpace(string(st)) == "active" {
+			return true
+		}
+	}
+	return false
 }

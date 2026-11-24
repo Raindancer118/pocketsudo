@@ -10,6 +10,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -315,5 +316,76 @@ func TestAgentUsesStunOnly(t *testing.T) {
 				t.Fatalf("agent gathers TURN: %v", u)
 			}
 		}
+	}
+}
+
+// A broken VAAPI (driver update, other GPU) must not leave the stream black:
+// the agent falls back to software encoding and keeps using it.
+func TestVideoFallsBackToSoftwareEncoder(t *testing.T) {
+	r := newRig(t)
+	r.agent.iceServers = nil
+	r.agent.encoderProbe = 300 * time.Millisecond
+	r.sys.out["hyprctl monitors -j"] = `[{"name":"eDP-1","x":0,"y":0,"width":1920,"height":1080,"scale":1}]`
+	var vaapiStarts atomic.Int32
+	r.sys.pipe = func(name string, args ...string) io.ReadCloser {
+		line := strings.Join(args, " ")
+		if strings.Contains(line, "h264_vaapi") {
+			vaapiStarts.Add(1)
+		}
+		if strings.Contains(line, "h264_vaapi") || strings.Contains(line, "h264_nvenc") {
+			return io.NopCloser(strings.NewReader("")) // hardware encoders die without a frame
+		}
+		return &liveFeed{left: 300}
+	}
+	result(t, r.send("session.open", nil, true))
+	for i := 0; i < 2; i++ {
+		pc, gotVideo, _ := newViewer(t)
+		res := result(t, r.send("stream.start", map[string]string{"offer": pc.LocalDescription().SDP, "source": "screen", "output": "eDP-1", "audio": "none"}, false))
+		var ans struct{ Answer string }
+		json.Unmarshal(res.Data, &ans)
+		pc.SetRemoteDescription(webrtc.SessionDescription{Type: webrtc.SDPTypeAnswer, SDP: ans.Answer})
+		select {
+		case <-gotVideo:
+		case <-time.After(10 * time.Second):
+			t.Fatalf("stream %d stayed black", i+1)
+		}
+		result(t, r.send("stream.stop", nil, false))
+	}
+	if !r.sys.ran("wf-recorder -o eDP-1 -D -m h264 -c libx264") {
+		t.Fatalf("no software encoder: %v", r.sys.calls)
+	}
+	if n := vaapiStarts.Load(); n != 1 {
+		t.Fatalf("VAAPI tried %d times; after one failure it should stay on software", n)
+	}
+}
+
+// NVENC costs nothing extra while the NVIDIA GPU is awake anyway, but would wake
+// it (battery) when it sleeps; then Intel VAAPI goes first.
+func TestEncoderOrderFollowsGPUState(t *testing.T) {
+	for _, awake := range []bool{true, false} {
+		r := newRig(t)
+		r.agent.iceServers = nil
+		r.agent.gpuAwake = func() bool { return awake }
+		r.sys.out["hyprctl monitors -j"] = `[{"name":"eDP-1","x":0,"y":0,"width":1920,"height":1080,"scale":1}]`
+		r.sys.pipe = func(name string, args ...string) io.ReadCloser { return &liveFeed{left: 300} }
+		result(t, r.send("session.open", nil, true))
+		pc, gotVideo, _ := newViewer(t)
+		res := result(t, r.send("stream.start", map[string]string{"offer": pc.LocalDescription().SDP, "source": "screen", "output": "eDP-1", "audio": "none"}, false))
+		var ans struct{ Answer string }
+		json.Unmarshal(res.Data, &ans)
+		pc.SetRemoteDescription(webrtc.SessionDescription{Type: webrtc.SDPTypeAnswer, SDP: ans.Answer})
+		select {
+		case <-gotVideo:
+		case <-time.After(10 * time.Second):
+			t.Fatal("no video")
+		}
+		want, not := "-c h264_vaapi", "-c h264_nvenc"
+		if awake {
+			want, not = not, want
+		}
+		if !r.sys.ran("wf-recorder -o eDP-1 -D -m h264 "+want) || r.sys.ran("wf-recorder -o eDP-1 -D -m h264 "+not) {
+			t.Fatalf("gpu awake=%v: %v", awake, r.sys.calls)
+		}
+		result(t, r.send("stream.stop", nil, false))
 	}
 }

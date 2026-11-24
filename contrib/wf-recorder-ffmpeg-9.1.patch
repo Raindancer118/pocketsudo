@@ -1,0 +1,172 @@
+# wf-recorder (upstream c5de474) against ffmpeg 9.1: AVCodec.pix_fmts/ch_layouts/sample_fmts are gone,
+# and hwupload needs its hw_device_ctx before init (segment API). Build: meson setup build && ninja -C build,
+# then install -m755 build/wf-recorder ~/.local/bin/ (Arch package from Aug 2026 records nothing with VAAPI).
+diff --git a/src/frame-writer.cpp b/src/frame-writer.cpp
+index 34d16d6..7c261d8 100644
+--- a/src/frame-writer.cpp
++++ b/src/frame-writer.cpp
+@@ -191,22 +191,27 @@ AVPixelFormat FrameWriter::handle_buffersink_pix_fmt(const AVCodec *codec)
+ 
+     auto in_fmt = get_input_format();
+ 
++    /* AVCodec.pix_fmts is gone since ffmpeg 9.1 */
++    const AVPixelFormat *pix_fmts = NULL;
++    avcodec_get_supported_config(NULL, codec, AV_CODEC_CONFIG_PIX_FORMAT, 0,
++        (const void **)&pix_fmts, NULL);
++
+     /* For codecs such as rawvideo no supported formats are listed */
+-    if (!codec->pix_fmts)
++    if (!pix_fmts)
+         return in_fmt;
+ 
+     /* If the codec supports getting the appropriate RGB format
+      * directly, we want to use it since we don't have to convert data */
+-    if (is_fmt_supported(in_fmt, codec->pix_fmts))
++    if (is_fmt_supported(in_fmt, pix_fmts))
+         return in_fmt;
+ 
+     /* Choose the format supported by the codec which best approximates the
+      * input fmt. */
+     AVPixelFormat best_format = AV_PIX_FMT_NONE;
+-    for (int i = 0; codec->pix_fmts[i] != AV_PIX_FMT_NONE; i++) {
++    for (int i = 0; pix_fmts[i] != AV_PIX_FMT_NONE; i++) {
+         int loss = 0;
+         best_format = av_find_best_pix_fmt_of_2(best_format,
+-            codec->pix_fmts[i], in_fmt, false, &loss);
++            pix_fmts[i], in_fmt, false, &loss);
+     }
+     return best_format;
+ }
+@@ -400,23 +405,45 @@ void FrameWriter::init_video_filters(const AVCodec *codec)
+ 
+     std::cerr << "Using video filter: " << params.video_filter << std::endl;
+ 
+-    err = avfilter_graph_parse_ptr(this->videoFilterGraph,
+-        params.video_filter.c_str(), &inputs, &outputs, NULL);
+-    if (err < 0) {
+-        std::cerr << "Failed to parse graph filter: " << averr(err) << std::endl;;
+-        exit(-1) ;
+-    }
+-
+     // Filters that create HW frames ('hwupload', 'hwmap', ...) need
+-    // AVBufferRef in their hw_device_ctx. Unfortunately, there is no
+-    // simple API to do that for filters created by avfilter_graph_parse_ptr().
+-    // The code below is inspired from ffmpeg_filter.c
+-    if (this->hw_device_context) {
++    // AVBufferRef in their hw_device_ctx *before* they are initialized
++    // (ffmpeg >= 9.1 checks it in init). avfilter_graph_parse_ptr() creates
++    // and initializes in one go, so use the segment API like fftools does:
++    // create the filters, set the device, then initialize and link them.
++    AVFilterGraphSegment *seg = NULL;
++    // unlike parse_ptr, the segment API matches inputs/outputs by label only
++    std::string labeled = "[in]" + params.video_filter + "[out]";
++    err = avfilter_graph_segment_parse(this->videoFilterGraph,
++        labeled.c_str(), 0, &seg);
++    if (err >= 0)
++        err = avfilter_graph_segment_create_filters(seg, 0);
++    if (err >= 0 && this->hw_device_context) {
+         for (unsigned i=0; i< this->videoFilterGraph->nb_filters; i++) {
+-            this->videoFilterGraph->filters[i]->hw_device_ctx =
+-                av_buffer_ref(this->hw_device_context);
++            AVFilterContext *f = this->videoFilterGraph->filters[i];
++            if (!f->hw_device_ctx)
++                f->hw_device_ctx = av_buffer_ref(this->hw_device_context);
+         }
+     }
++    // apply() initializes the filters and hands back the segment's open pads
++    // ([in] / [out]); linking them to the buffer source and sink is up to us
++    AVFilterInOut *seg_in = NULL, *seg_out = NULL;
++    if (err >= 0)
++        err = avfilter_graph_segment_apply(seg, 0, &seg_in, &seg_out);
++    if (err >= 0 && (!seg_in || !seg_out))
++        err = AVERROR(EINVAL);
++    if (err >= 0)
++        err = avfilter_link(this->videoFilterSourceCtx, 0, seg_in->filter_ctx, seg_in->pad_idx);
++    if (err >= 0)
++        err = avfilter_link(seg_out->filter_ctx, seg_out->pad_idx, this->videoFilterSinkCtx, 0);
++    avfilter_inout_free(&seg_in);
++    avfilter_inout_free(&seg_out);
++    avfilter_inout_free(&inputs);
++    avfilter_inout_free(&outputs);
++    avfilter_graph_segment_free(&seg);
++    if (err < 0) {
++        std::cerr << "Failed to parse graph filter: " << averr(err) << std::endl;;
++        exit(-1) ;
++    }
+ 
+     err = avfilter_graph_config(this->videoFilterGraph, NULL);
+     if (err<0) {
+@@ -517,16 +544,20 @@ void FrameWriter::init_video_stream()
+ static uint64_t get_codec_channel_layout(const AVCodec *codec)
+ {
+     int i = 0;
+-    if (!codec->ch_layouts)
++    /* AVCodec.ch_layouts is gone since ffmpeg 9.1 */
++    const AVChannelLayout *ch_layouts = NULL;
++    avcodec_get_supported_config(NULL, codec, AV_CODEC_CONFIG_CHANNEL_LAYOUT, 0,
++        (const void **)&ch_layouts, NULL);
++    if (!ch_layouts)
+         return AV_CH_LAYOUT_STEREO;
+     while (1) {
+-        if (!av_channel_layout_check(&codec->ch_layouts[i]))
++        if (!av_channel_layout_check(&ch_layouts[i]))
+             break;
+-        if (codec->ch_layouts[i].u.mask == AV_CH_LAYOUT_STEREO)
+-            return codec->ch_layouts[i].u.mask;
++        if (ch_layouts[i].u.mask == AV_CH_LAYOUT_STEREO)
++            return ch_layouts[i].u.mask;
+         i++;
+     }
+-    return codec->ch_layouts[0].u.mask;
++    return ch_layouts[0].u.mask;
+ }
+ #else
+ static uint64_t get_codec_channel_layout(const AVCodec *codec)
+@@ -545,23 +576,32 @@ static uint64_t get_codec_channel_layout(const AVCodec *codec)
+ }
+ #endif
+ 
++/* AVCodec.sample_fmts is gone since ffmpeg 9.1 */
++static const enum AVSampleFormat *codec_sample_fmts(const AVCodec *codec)
++{
++    const enum AVSampleFormat *fmts = NULL;
++    avcodec_get_supported_config(NULL, codec, AV_CODEC_CONFIG_SAMPLE_FORMAT, 0,
++        (const void **)&fmts, NULL);
++    return fmts;
++}
++
+ static enum AVSampleFormat get_codec_auto_sample_fmt(const AVCodec *codec)
+ {
+     int i = 0;
+-    if (!codec->sample_fmts)
++    if (!codec_sample_fmts(codec))
+         return av_get_sample_fmt(FALLBACK_AUDIO_SAMPLE_FMT);
+     while (1) {
+-        if (codec->sample_fmts[i] == -1)
++        if (codec_sample_fmts(codec)[i] == -1)
+             break;
+-        if (av_get_bytes_per_sample(codec->sample_fmts[i]) >= 2)
+-            return codec->sample_fmts[i];
++        if (av_get_bytes_per_sample(codec_sample_fmts(codec)[i]) >= 2)
++            return codec_sample_fmts(codec)[i];
+         i++;
+     }
+-    return codec->sample_fmts[0];
++    return codec_sample_fmts(codec)[0];
+ }
+ 
+ bool check_fmt_available(const AVCodec *codec, AVSampleFormat fmt){
+-    for (const enum AVSampleFormat *sample_ptr = codec -> sample_fmts; *sample_ptr != -1; sample_ptr++)
++    for (const enum AVSampleFormat *sample_ptr = codec_sample_fmts(codec); *sample_ptr != -1; sample_ptr++)
+     {
+         if (*sample_ptr == fmt)
+         {
+@@ -578,7 +618,7 @@ static enum AVSampleFormat convert_codec_sample_fmt(const AVCodec *codec, std::s
+     {
+         std::cerr << "Failed to find the given sample format: " << requested_fmt << std::endl;
+         std::exit(-1);
+-    } else if (!codec->sample_fmts || check_fmt_available(codec, converted_fmt))
++    } else if (!codec_sample_fmts(codec) || check_fmt_available(codec, converted_fmt))
+     {
+         std::cerr << "Using sample format " << av_get_sample_fmt_name(converted_fmt) << " for audio codec " << codec->name << std::endl;
+         return converted_fmt;
