@@ -57,13 +57,19 @@ public class StreamActivity extends AppCompatActivity {
     private String source = "", audio = "none";
     /** id → [kind ("screen"/"camera"), output or device, label] */
     private final java.util.LinkedHashMap<String, String[]> sources = new java.util.LinkedHashMap<>();
-    private int frameW = 16, frameH = 9;
+    private int frameW, frameH;
     private long lastMove;
     private float scrollAcc;
+    private final Zoom zoom = new Zoom();
+    // two-finger gesture: decided once the fingers moved far enough
+    private static final int TWO_NONE = 0, TWO_UNDECIDED = 1, TWO_PINCH = 2, TWO_SCROLL = 3;
+    private int two = TWO_NONE;
+    private float startSpan, lastSpan, startFx, startFy, lastFx, lastFy;
 
     @Override
     protected void onCreate(Bundle s) {
         super.onCreate(s);
+        getWindow().setBackgroundDrawableResource(android.R.color.black);
         setContentView(R.layout.activity_stream);
         deck = Deck.get(this);
         video = findViewById(R.id.video);
@@ -77,6 +83,18 @@ public class StreamActivity extends AppCompatActivity {
         findViewById(R.id.switch_source).setOnClickListener(v -> {
             View sw = findViewById(R.id.switcher);
             sw.setVisibility(sw.getVisibility() == View.VISIBLE ? View.GONE : View.VISIBLE);
+        });
+        findViewById(R.id.stream_root).addOnLayoutChangeListener((v, l, t, r, b, ol, ot, or, ob) -> {
+            if (r - l != or - ol || b - t != ob - ot) v.post(this::fitVideo);
+        });
+        video.setPivotX(0);
+        video.setPivotY(0);
+        video.addOnLayoutChangeListener((v, l, t, r, b, ol, ot, or, ob) -> {
+            // new picture size (source switch, rotation): start unzoomed again
+            if (r - l != or - ol || b - t != ob - ot) zoom.reset();
+            View parent = (View) v.getParent();
+            zoom.layout(parent.getWidth(), parent.getHeight(), l, t, r - l, b - t);
+            applyZoom();
         });
         setupTouch();
         loadSources();
@@ -269,6 +287,7 @@ public class StreamActivity extends AppCompatActivity {
             public void onFrameResolutionChanged(int w, int h, int rotation) {
                 frameW = rotation % 180 == 0 ? w : h;
                 frameH = rotation % 180 == 0 ? h : w;
+                runOnUiThread(StreamActivity.this::fitVideo);
             }
         });
         video.setScalingType(RendererCommon.ScalingType.SCALE_ASPECT_FIT);
@@ -474,13 +493,25 @@ public class StreamActivity extends AppCompatActivity {
             }
 
             @Override
+            public boolean onDoubleTap(@NonNull MotionEvent e) {
+                send("tap", e.getX(), e.getY(), 0);
+                send("tap", e.getX(), e.getY(), 0);
+                return true;
+            }
+
+            @Override
             public void onLongPress(@NonNull MotionEvent e) {
                 send("right", e.getX(), e.getY(), 0);
             }
 
             @Override
             public boolean onScroll(MotionEvent e1, @NonNull MotionEvent e2, float dx, float dy) {
-                if (e2.getPointerCount() > 1) return false;
+                if (zoom.zoomed()) {
+                    // zoomed in: one finger moves the picture like any image viewer
+                    zoom.panBy(-dx, -dy);
+                    applyZoom();
+                    return true;
+                }
                 long now = System.currentTimeMillis();
                 if (now - lastMove >= MOVE_EVERY_MS) {
                     lastMove = now;
@@ -490,29 +521,95 @@ public class StreamActivity extends AppCompatActivity {
             }
         });
         findViewById(R.id.touch).setOnTouchListener((v, e) -> {
-            if (e.getPointerCount() == 2 && e.getActionMasked() == MotionEvent.ACTION_MOVE && e.getHistorySize() > 0) {
-                // two fingers: scroll, one wheel step per 40 px
-                scrollAcc += e.getY(0) - e.getHistoricalY(0, 0);
-                int steps = (int) (scrollAcc / dp(40));
-                if (steps != 0) {
-                    scrollAcc -= steps * dp(40);
-                    send("scroll", e.getX(0), e.getY(0), steps);
-                }
+            int action = e.getActionMasked();
+            if (action == MotionEvent.ACTION_DOWN) two = TWO_NONE;
+            if (action == MotionEvent.ACTION_POINTER_DOWN && e.getPointerCount() == 2 && two == TWO_NONE) {
+                // a second finger ends any tap, long press or drag of the first
+                MotionEvent cancel = MotionEvent.obtain(e);
+                cancel.setAction(MotionEvent.ACTION_CANCEL);
+                g.onTouchEvent(cancel);
+                cancel.recycle();
+                two = TWO_UNDECIDED;
+                startSpan = lastSpan = span(e);
+                startFx = lastFx = (e.getX(0) + e.getX(1)) / 2;
+                startFy = lastFy = (e.getY(0) + e.getY(1)) / 2;
                 return true;
             }
-            if (e.getActionMasked() == MotionEvent.ACTION_UP) v.performClick();
+            if (two != TWO_NONE) {
+                if (action == MotionEvent.ACTION_MOVE && e.getPointerCount() >= 2) twoFingers(e);
+                if (action == MotionEvent.ACTION_UP) v.performClick();
+                return true;
+            }
+            if (action == MotionEvent.ACTION_UP) v.performClick();
             return g.onTouchEvent(e);
         });
+    }
+
+    /** Pinch zooms (and pans with the fingers), a parallel drag scrolls the computer. */
+    private void twoFingers(MotionEvent e) {
+        float sp = span(e), fx = (e.getX(0) + e.getX(1)) / 2, fy = (e.getY(0) + e.getY(1)) / 2;
+        if (two == TWO_UNDECIDED) {
+            if (Math.abs(sp - startSpan) > dp(24)) {
+                two = TWO_PINCH;
+            } else if (Math.abs(fy - startFy) > dp(16) || Math.abs(fx - startFx) > dp(16)) {
+                two = TWO_SCROLL;
+                scrollAcc = 0;
+            }
+        }
+        if (two == TWO_PINCH && lastSpan > 0) {
+            zoom.zoomBy(sp / lastSpan, fx, fy);
+            zoom.panBy(fx - lastFx, fy - lastFy);
+            applyZoom();
+        } else if (two == TWO_SCROLL) {
+            // one wheel step per 40 px
+            scrollAcc += fy - lastFy;
+            int steps = (int) (scrollAcc / dp(40));
+            if (steps != 0) {
+                scrollAcc -= steps * dp(40);
+                send("scroll", fx, fy, steps);
+            }
+        }
+        lastSpan = sp;
+        lastFx = fx;
+        lastFy = fy;
+    }
+
+    private static float span(MotionEvent e) {
+        return (float) Math.hypot(e.getX(0) - e.getX(1), e.getY(0) - e.getY(1));
+    }
+
+    /**
+     * Sizes the renderer to the picture, fitted and centred, so its bounds are
+     * exactly the picture (no crop, no black bars inside the view). Done by hand:
+     * wrap_content stays 0x0 until a frame is drawn, which needs a surface first.
+     */
+    private void fitVideo() {
+        View root = findViewById(R.id.stream_root);
+        int pw = root.getWidth(), ph = root.getHeight();
+        if (pw == 0 || ph == 0 || frameW <= 0 || frameH <= 0) return;
+        float sc = Math.min(pw / (float) frameW, ph / (float) frameH);
+        android.widget.FrameLayout.LayoutParams lp = (android.widget.FrameLayout.LayoutParams) video.getLayoutParams();
+        int w = Math.round(frameW * sc), h = Math.round(frameH * sc);
+        if (lp.width == w && lp.height == h) return;
+        lp.width = w;
+        lp.height = h;
+        lp.gravity = android.view.Gravity.CENTER;
+        video.setLayoutParams(lp);
+    }
+
+    private void applyZoom() {
+        video.setScaleX(zoom.scale());
+        video.setScaleY(zoom.scale());
+        video.setTranslationX(zoom.tx());
+        video.setTranslationY(zoom.ty());
     }
 
     /** Maps a touch on the full-screen touch layer into 0..1 of the picture. */
     private void send(String type, float tx, float ty, int dy) {
         if (input == null || input.state() != DataChannel.State.OPEN) return;
-        // the renderer is sized to the picture and centred; its bounds are the picture
-        double x = (tx - video.getLeft()) / (double) video.getWidth();
-        double y = (ty - video.getTop()) / (double) video.getHeight();
-        if (x < 0 || x > 1 || y < 0 || y > 1) return;
-        String msg = "{\"t\":\"" + type + "\",\"x\":" + x + ",\"y\":" + y + ",\"dy\":" + dy + "}";
+        double[] p = zoom.toPicture(tx, ty);
+        if (p == null) return;
+        String msg = "{\"t\":\"" + type + "\",\"x\":" + p[0] + ",\"y\":" + p[1] + ",\"dy\":" + dy + "}";
         input.send(new DataChannel.Buffer(ByteBuffer.wrap(msg.getBytes(StandardCharsets.UTF_8)), false));
     }
 
