@@ -302,14 +302,14 @@ func TestSystemAudioArrivesAsOpusPackets(t *testing.T) {
 // The phone brings TURN; one relayed side is enough (TURN permissions are per IP),
 // and every agent allocation per network interface ate into coturn's quota.
 func TestAgentUsesStunOnly(t *testing.T) {
-	r := newRig(t)
 	// a relay that does hand out TURN credentials
 	turn := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Write([]byte(`{"urls":["turn:turn.example:3478?transport=udp"],"username":"1:abc","credential":"x","ttl":3600}`))
 	}))
 	defer turn.Close()
-	r.agent.client = host.NewClient(turn.URL, "")
-	for _, s := range r.agent.iceConfig(context.Background()) {
+	// an agent of its own: swapping the client of a running one races with its poll loop
+	a := &Agent{client: host.NewClient(turn.URL, ""), iceServers: defaultICE()}
+	for _, s := range a.iceConfig(context.Background()) {
 		for _, u := range s.URLs {
 			if strings.HasPrefix(u, "turn") {
 				t.Fatalf("agent gathers TURN: %v", u)
