@@ -4,7 +4,12 @@ import (
 	"archive/zip"
 	"bytes"
 	"context"
+	"encoding/base64"
 	"encoding/json"
+	"image"
+	"image/color"
+	"image/jpeg"
+	"image/png"
 	"os"
 	"path/filepath"
 	"strings"
@@ -113,5 +118,39 @@ func TestSendLimits(t *testing.T) {
 	names, err := r.agent.SendFiles(context.Background(), many, false)
 	if err != nil || len(names) != 1 || !strings.HasSuffix(names[0], ".zip") {
 		t.Fatalf("many files: %v %v", names, err)
+	}
+}
+
+func TestSendImageCarriesPreview(t *testing.T) {
+	r := newRig(t)
+	dir := t.TempDir()
+	img := image.NewRGBA(image.Rect(0, 0, 1600, 900))
+	for x := 0; x < 1600; x++ {
+		img.Set(x, 450, color.RGBA{200, 30, 30, 255})
+	}
+	var b bytes.Buffer
+	png.Encode(&b, img)
+	photo := filepath.Join(dir, "Urlaub.png")
+	os.WriteFile(photo, b.Bytes(), 0o644)
+	text := filepath.Join(dir, "notiz.txt")
+	os.WriteFile(text, []byte("kein bild"), 0o644)
+
+	if _, err := r.agent.SendFiles(context.Background(), []string{photo, text}, false); err != nil {
+		t.Fatal(err)
+	}
+	var withThumb struct{ Name, Thumb string }
+	json.Unmarshal(r.awaitType("file").Body, &withThumb)
+	raw, err := base64.StdEncoding.DecodeString(withThumb.Thumb)
+	if err != nil || len(raw) == 0 {
+		t.Fatalf("no preview for %s: %v", withThumb.Name, err)
+	}
+	cfg, err := jpeg.DecodeConfig(bytes.NewReader(raw))
+	if err != nil || cfg.Width != thumbPx || cfg.Height != thumbPx*900/1600 || len(withThumb.Thumb) > 60<<10 {
+		t.Fatalf("preview %dx%d, %d bytes: %v", cfg.Width, cfg.Height, len(withThumb.Thumb), err)
+	}
+	var plain struct{ Name, Thumb string }
+	json.Unmarshal(r.awaitType("file").Body, &plain)
+	if plain.Name != "notiz.txt" || plain.Thumb != "" {
+		t.Fatalf("text file got a preview: %+v", plain)
 	}
 }

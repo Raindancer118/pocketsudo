@@ -73,5 +73,9 @@ func (a *Agent) sendBlob(ctx context.Context, name string, data []byte) error {
 	if err != nil {
 		return fmt.Errorf("%s: %w", name, err)
 	}
-	return a.notifyErr(ctx, "file", map[string]any{"blob": id, "name": name, "size": len(data)})
+	offer := map[string]any{"blob": id, "name": name, "size": len(data)}
+	if t := thumbnail(data); t != "" {
+		offer["thumb"] = t
+	}
+	return a.notifyErr(ctx, "file", offer)
 }
