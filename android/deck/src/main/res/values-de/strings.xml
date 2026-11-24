@@ -133,4 +133,25 @@
         <item quantity="one">1 Schritt</item>
         <item quantity="other">%d Schritte</item>
     </plurals>
+    <string name="stream">Stream</string>
+    <string name="tile_stream">Stream</string>
+    <string name="stream_source">Was zeigen</string>
+    <string name="stream_audio">Ton</string>
+    <string name="stream_start">Stream starten</string>
+    <string name="stream_stop">Stream beenden</string>
+    <string name="camera">Webcam</string>
+    <string name="audio_none">Kein Ton</string>
+    <string name="audio_system">Computer</string>
+    <string name="audio_mic">Mikrofon</string>
+    <string name="stream_connecting">Verbindet …</string>
+    <string name="stream_live">Live</string>
+    <string name="stream_failed">Verbindung fehlgeschlagen</string>
+    <string name="bio_camera">Kamera oder Mikrofon von %1$s</string>
+    <string name="loading_monitors">Lädt Bildschirme …</string>
+    <string name="download">Herunterladen</string>
+    <string name="search_hint">In diesem Ordner suchen</string>
+    <string name="selected">%1$d ausgewählt</string>
+    <string name="no_results">Nichts gefunden</string>
+    <string name="zipping">Packt %1$d Einträge …</string>
+    <string name="file_details">%1$s · %2$s</string>
 </resources>

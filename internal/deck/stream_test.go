@@ -154,3 +154,14 @@ func TestCameraNeedsFingerEvenWithSession(t *testing.T) {
 	}
 	result(t, r.send("stream.stop", nil, false))
 }
+
+func TestMonitorsList(t *testing.T) {
+	r := newRig(t)
+	r.sys.out["hyprctl monitors -j"] = `[{"name":"eDP-1","x":5760,"y":300,"width":1920,"height":1080,"scale":1.2},{"name":"DP-8","x":0,"y":0,"width":1920,"height":1200,"scale":1}]`
+	res := result(t, r.send("monitors.list", nil, false))
+	var ms []monitor
+	json.Unmarshal(res.Data, &ms)
+	if !res.OK || len(ms) != 2 || ms[0].Name != "DP-8" {
+		t.Fatalf("monitors left to right expected: %+v %+v", res, ms)
+	}
+}

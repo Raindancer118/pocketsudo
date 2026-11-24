@@ -5,15 +5,21 @@ import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
+import android.os.Handler;
+import android.os.Looper;
 import android.provider.MediaStore;
+import android.text.Editable;
+import android.text.TextWatcher;
 import android.text.format.DateUtils;
 import android.text.format.Formatter;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.webkit.MimeTypeMap;
+import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
+import androidx.activity.OnBackPressedCallback;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
@@ -23,16 +29,28 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.OutputStream;
+import java.util.LinkedHashSet;
 import java.util.Locale;
+import java.util.Set;
 
-/** Browse the home folder of the computer, download files, upload into the open folder. */
+import de.raindancer118.pocketcore.Ui;
+
+/**
+ * Browse the computer's home folder: tap for details, hold to select
+ * (files and folders, downloaded as one zip), search below the open folder,
+ * upload into it.
+ */
 public class FilesActivity extends AppCompatActivity {
     private Deck deck;
     private String path = "";
     private LinearLayout list;
-    private TextView where, message, upload;
+    private TextView where, message, upload, selectAction;
+    private EditText search;
     private View closed;
     private ActivityResultLauncher<String[]> pick;
+    private final Set<String> selected = new LinkedHashSet<>();
+    private final Handler main = new Handler(Looper.getMainLooper());
+    private final Runnable runSearch = this::doSearch;
 
     @Override
     protected void onCreate(Bundle s) {
@@ -43,20 +61,37 @@ public class FilesActivity extends AppCompatActivity {
         where = findViewById(R.id.where);
         message = findViewById(R.id.message);
         upload = findViewById(R.id.upload);
+        selectAction = findViewById(R.id.select_action);
+        search = findViewById(R.id.search);
         closed = findViewById(R.id.closed);
-        de.raindancer118.pocketcore.Ui.link(upload);
-        findViewById(R.id.back).setOnClickListener(v -> up());
+        Ui.link(upload, selectAction);
+        findViewById(R.id.back).setOnClickListener(v -> back());
         findViewById(R.id.open).setOnClickListener(v -> Session.open(this, (ok, err) -> {
             if (ok) load(path);
             else say(err);
         }));
         pick = registerForActivityResult(new ActivityResultContracts.OpenDocument(), this::uploadHere);
         upload.setOnClickListener(v -> pick.launch(new String[]{"*/*"}));
-        // back goes one folder up before leaving the browser
-        getOnBackPressedDispatcher().addCallback(this, new androidx.activity.OnBackPressedCallback(true) {
+        selectAction.setOnClickListener(v -> downloadSelection());
+        search.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence c, int a, int b, int d) {
+            }
+
+            @Override
+            public void onTextChanged(CharSequence c, int a, int b, int d) {
+            }
+
+            @Override
+            public void afterTextChanged(Editable e) {
+                main.removeCallbacks(runSearch);
+                main.postDelayed(runSearch, 400);
+            }
+        });
+        getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
             @Override
             public void handleOnBackPressed() {
-                up();
+                back();
             }
         });
     }
@@ -68,14 +103,19 @@ public class FilesActivity extends AppCompatActivity {
         load(path);
     }
 
-
-    private void up() {
-        if (path.isEmpty()) {
+    /** Back: leave selection, then search, then go one folder up, then close. */
+    private void back() {
+        if (!selected.isEmpty()) {
+            selected.clear();
+            load(path);
+        } else if (search.getText().length() > 0) {
+            search.setText("");
+        } else if (!path.isEmpty()) {
+            int i = path.lastIndexOf('/');
+            load(i < 0 ? "" : path.substring(0, i));
+        } else {
             finish();
-            return;
         }
-        int i = path.lastIndexOf('/');
-        load(i < 0 ? "" : path.substring(0, i));
     }
 
     private void load(String p) {
@@ -83,78 +123,158 @@ public class FilesActivity extends AppCompatActivity {
             if (!ok) {
                 boolean needsSession = Session.isSessionError(err);
                 closed.setVisibility(needsSession ? View.VISIBLE : View.GONE);
+                search.setVisibility(needsSession ? View.GONE : View.VISIBLE);
                 upload.setVisibility(View.GONE);
                 if (needsSession) list.removeAllViews();
                 else say(err);
                 return;
             }
             closed.setVisibility(View.GONE);
-            upload.setVisibility(View.VISIBLE);
+            search.setVisibility(View.VISIBLE);
             say(null);
             try {
-                show(new JSONObject(data));
+                JSONObject ls = new JSONObject(data);
+                path = ls.optString("path");
+                where.setText(path.isEmpty() ? "~" : "~/" + path);
+                show(ls.getJSONArray("entries"), false);
             } catch (JSONException e) {
                 say(e.getMessage());
             }
         });
     }
 
-    private void show(JSONObject ls) throws JSONException {
-        path = ls.optString("path");
-        where.setText(path.isEmpty() ? "~" : "~/" + path);
+    private void doSearch() {
+        String q = search.getText().toString().trim();
+        if (q.length() < 2) {
+            if (q.isEmpty()) load(path);
+            return;
+        }
+        deck.send("fs.search", jsonOf("path", path, "query", q), (ok, err, data) -> {
+            if (!ok) {
+                say(err);
+                return;
+            }
+            try {
+                JSONArray r = new JSONObject(data).getJSONArray("results");
+                show(r, true);
+                if (r.length() == 0) say(getString(R.string.no_results));
+            } catch (JSONException e) {
+                say(e.getMessage());
+            }
+        });
+    }
+
+    /** entries from fs.list (name relative to path) or fs.search (path relative to home). */
+    private void show(JSONArray entries, boolean fromSearch) throws JSONException {
         list.removeAllViews();
-        JSONArray entries = ls.getJSONArray("entries");
         LayoutInflater inf = LayoutInflater.from(this);
         for (int i = 0; i < entries.length(); i++) {
             JSONObject e = entries.getJSONObject(i);
-            View row = inf.inflate(R.layout.item_file, list, false);
-            TextView name = row.findViewById(R.id.name), meta = row.findViewById(R.id.meta);
             boolean dir = e.getBoolean("dir");
             String n = e.getString("name");
+            String rel = fromSearch ? e.getString("path") : (path.isEmpty() ? n : path + "/" + n);
+            View row = inf.inflate(R.layout.item_file, list, false);
+            TextView name = row.findViewById(R.id.name), meta = row.findViewById(R.id.meta);
             name.setText(n);
             name.setCompoundDrawablesRelativeWithIntrinsicBounds(dir ? R.drawable.ic_folder : R.drawable.ic_file, 0, 0, 0);
-            String when = DateUtils.getRelativeTimeSpanString(e.getLong("mtime") * 1000).toString();
-            meta.setText(dir ? when : Formatter.formatShortFileSize(this, e.getLong("size")) + " · " + when);
-            String child = path.isEmpty() ? n : path + "/" + n;
+            String when = DateUtils.getRelativeTimeSpanString(e.optLong("mtime") * 1000).toString();
+            String info = dir ? when : Formatter.formatShortFileSize(this, e.optLong("size")) + " · " + when;
+            meta.setText(fromSearch ? "~/" + rel : info);
+            mark(row, selected.contains(rel));
             row.setOnClickListener(v -> {
-                if (dir) load(child);
-                else download(child, n);
+                if (!selected.isEmpty()) {
+                    toggle(row, rel);
+                } else if (dir) {
+                    search.setText("");
+                    load(rel);
+                } else {
+                    details(rel, n, info);
+                }
+            });
+            row.setOnLongClickListener(v -> {
+                row.performHapticFeedback(android.view.HapticFeedbackConstants.LONG_PRESS);
+                toggle(row, rel);
+                return true;
             });
             list.addView(row);
         }
-        if (entries.length() == 0) {
+        if (entries.length() == 0 && !fromSearch) {
             TextView empty = new TextView(this, null, 0, R.style.Text_Small);
             empty.setText(R.string.folder_empty);
             empty.setPadding(0, 48, 0, 0);
             empty.setGravity(android.view.Gravity.CENTER);
             list.addView(empty);
         }
+        renderSelection();
     }
 
-    private void download(String rel, String name) {
-        say(getString(R.string.downloading, name));
-        deck.send("fs.get", json("path", rel), (ok, err, data) -> {
-            if (!ok) {
-                say(err);
-                return;
+    // ---- selection ----
+
+    private void toggle(View row, String rel) {
+        if (!selected.remove(rel)) selected.add(rel);
+        mark(row, selected.contains(rel));
+        renderSelection();
+    }
+
+    private void mark(View row, boolean on) {
+        row.setBackgroundResource(on ? R.drawable.bg_key : R.drawable.bg_link);
+    }
+
+    private void renderSelection() {
+        boolean selecting = !selected.isEmpty();
+        selectAction.setVisibility(selecting ? View.VISIBLE : View.GONE);
+        upload.setVisibility(selecting || closed.getVisibility() == View.VISIBLE ? View.GONE : View.VISIBLE);
+        if (selecting) say(getString(R.string.selected, selected.size()));
+        else if (message.getText().toString().matches("\\d+ .*")) say(null);
+    }
+
+    private void downloadSelection() {
+        String[] paths = selected.toArray(new String[0]);
+        selected.clear();
+        renderSelection();
+        say(getString(R.string.zipping, paths.length));
+        JSONObject body = new JSONObject();
+        try {
+            JSONArray a = new JSONArray();
+            for (String p : paths) a.put(p);
+            body.put("paths", a);
+        } catch (JSONException ignored) {
+        }
+        deck.send("fs.zip", body.toString(), (ok, err, data) -> fetch(ok, err, data));
+        load(path);
+    }
+
+    // ---- download / upload ----
+
+    private void details(String rel, String name, String info) {
+        Ui.confirm(this, name, info, getString(R.string.download), false, () -> {
+            say(getString(R.string.downloading, name));
+            deck.send("fs.get", json("path", rel), this::fetch);
+        });
+    }
+
+    private void fetch(boolean ok, String err, String data) {
+        if (!ok) {
+            say(err);
+            return;
+        }
+        deck.io().execute(() -> {
+            try {
+                JSONObject o = new JSONObject(data);
+                String name = o.getString("name");
+                byte[] bytes = deck.download(o.getString("blob"));
+                Uri uri = saveDownload(name, bytes);
+                runOnUiThread(() -> {
+                    say(getString(R.string.downloaded, name));
+                    try {
+                        startActivity(new Intent(Intent.ACTION_VIEW).setDataAndType(uri, mime(name))
+                                .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION));
+                    } catch (android.content.ActivityNotFoundException ignored) {
+                    }
+                });
+            } catch (Exception e) {
+                runOnUiThread(() -> say(e.getMessage()));
             }
-            deck.io().execute(() -> {
-                try {
-                    byte[] bytes = deck.download(Transfer.blobOf(data));
-                    Uri uri = saveDownload(name, bytes);
-                    runOnUiThread(() -> {
-                        say(getString(R.string.downloaded, name));
-                        Intent view = new Intent(Intent.ACTION_VIEW).setDataAndType(uri, mime(name))
-                                .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-                        try {
-                            startActivity(view);
-                        } catch (android.content.ActivityNotFoundException ignored) {
-                        }
-                    });
-                } catch (Exception e) {
-                    runOnUiThread(() -> say(e.getMessage()));
-                }
-            });
         });
     }
 
@@ -198,8 +318,14 @@ public class FilesActivity extends AppCompatActivity {
     }
 
     private static String json(String k, String v) {
+        return jsonOf(k, v);
+    }
+
+    private static String jsonOf(String... kv) {
         try {
-            return new JSONObject().put(k, v).toString();
+            JSONObject o = new JSONObject();
+            for (int i = 0; i + 1 < kv.length; i += 2) o.put(kv[i], kv[i + 1]);
+            return o.toString();
         } catch (JSONException e) {
             return "{}";
         }

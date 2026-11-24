@@ -1,6 +1,8 @@
 package deck
 
 import (
+	"archive/zip"
+	"bytes"
 	"context"
 	"crypto/ecdsa"
 	"encoding/base64"
@@ -546,5 +548,50 @@ func TestSessionStatus(t *testing.T) {
 	json.Unmarshal(res.Data, &st)
 	if st.Until < time.Now().Unix() {
 		t.Fatalf("open session not reported: %+v", res)
+	}
+}
+
+func TestFileSearchAndZip(t *testing.T) {
+	r := newRig(t)
+	home := t.TempDir()
+	r.agent.home = home
+	os.MkdirAll(filepath.Join(home, "Projekte", "pocketsudo", ".git"), 0o755)
+	os.WriteFile(filepath.Join(home, "Projekte", "pocketsudo", "README.md"), []byte("hallo"), 0o644)
+	os.WriteFile(filepath.Join(home, "Projekte", "pocketsudo", ".git", "readme-hidden"), []byte("x"), 0o644)
+	os.WriteFile(filepath.Join(home, "Projekte", "Notizen.txt"), []byte("notiz"), 0o644)
+	result(t, r.send("session.open", nil, true))
+
+	res := result(t, r.send("fs.search", map[string]string{"path": "", "query": "readme"}, false))
+	var found struct{ Results []struct{ Path string } }
+	json.Unmarshal(res.Data, &found)
+	if !res.OK || len(found.Results) != 1 || found.Results[0].Path != "Projekte/pocketsudo/README.md" {
+		t.Fatalf("search: %+v %+v", res, found)
+	}
+
+	res = result(t, r.send("fs.zip", map[string]any{"paths": []string{"Projekte/pocketsudo", "Projekte/Notizen.txt"}}, false))
+	var z struct{ Blob, Name string }
+	json.Unmarshal(res.Data, &z)
+	if !res.OK || !strings.HasSuffix(z.Name, ".zip") {
+		t.Fatalf("zip: %+v", res)
+	}
+	var raw []byte
+	r.phone.Raw(context.Background(), "GET", "/v1/channels/"+r.channel+"/blobs/"+z.Blob, nil, &raw)
+	plain, err := protocol.OpenBytes(r.key, raw)
+	if err != nil {
+		t.Fatal(err)
+	}
+	zr, err := zip.NewReader(bytes.NewReader(plain), int64(len(plain)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	names := map[string]bool{}
+	for _, f := range zr.File {
+		names[f.Name] = true
+	}
+	if !names["pocketsudo/README.md"] || !names["Notizen.txt"] {
+		t.Fatalf("zip content %v", names)
+	}
+	if res := result(t, r.send("fs.zip", map[string]any{"paths": []string{"../.."}}, false)); res.OK {
+		t.Fatal("zipped outside home")
 	}
 }

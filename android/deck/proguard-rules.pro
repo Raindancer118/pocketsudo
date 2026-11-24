@@ -1,1 +1,2 @@
 -keep class de.raindancer118.pocketdeck.** { *; }
+-keep class org.webrtc.** { *; }

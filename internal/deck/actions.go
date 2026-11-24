@@ -1,12 +1,15 @@
 package deck
 
 import (
+	"archive/zip"
 	"bufio"
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/Raindancer118/pocketsudo/protocol"
+	"io"
 	"net/url"
 	"os"
 	"os/exec"
@@ -52,8 +55,11 @@ func init() {
 		"file.put":       {fn: (*Agent).filePut},
 		"fs.list":        {session: true, fn: (*Agent).fsList},
 		"fs.get":         {session: true, fn: (*Agent).fsGet},
+		"fs.search":      {session: true, fn: (*Agent).fsSearch},
+		"fs.zip":         {session: true, fn: (*Agent).fsZip},
 		"stream.start":   {session: true, fn: (*Agent).streamStart},
 		"stream.stop":    {fn: (*Agent).streamStop},
+		"monitors.list":  {fn: (*Agent).monitorsList},
 	}
 }
 
@@ -784,4 +790,129 @@ func (a *Agent) fsGet(ctx context.Context, body json.RawMessage) (json.RawMessag
 		return nil, err
 	}
 	return ok(map[string]any{"blob": id, "name": filepath.Base(path), "size": len(data)})
+}
+
+const maxSearchResults = 200
+
+// fsSearch finds names containing the query below path (hidden folders skipped).
+func (a *Agent) fsSearch(ctx context.Context, body json.RawMessage) (json.RawMessage, error) {
+	var p struct{ Path, Query string }
+	if err := decode(body, &p); err != nil {
+		return nil, err
+	}
+	q := strings.ToLower(strings.TrimSpace(p.Query))
+	if len(q) < 2 {
+		return nil, errors.New("type at least 2 characters")
+	}
+	root, err := a.inHome(p.Path)
+	if err != nil {
+		return nil, err
+	}
+	home, _ := filepath.EvalSymlinks(a.home)
+	var out []map[string]any
+	deadline := time.Now().Add(8 * time.Second)
+	errStop := errors.New("stop")
+	filepath.WalkDir(root, func(path string, d os.DirEntry, err error) error {
+		if err != nil {
+			return nil
+		}
+		if ctx.Err() != nil || time.Now().After(deadline) || len(out) >= maxSearchResults {
+			return errStop
+		}
+		name := d.Name()
+		if path != root && strings.HasPrefix(name, ".") {
+			if d.IsDir() {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+		if d.IsDir() && (name == "node_modules" || name == "target" || name == "build") && path != root {
+			return filepath.SkipDir
+		}
+		if path != root && strings.Contains(strings.ToLower(name), q) {
+			rel, _ := filepath.Rel(home, path)
+			e := map[string]any{"path": rel, "name": name, "dir": d.IsDir()}
+			if fi, err := d.Info(); err == nil {
+				e["size"], e["mtime"] = fi.Size(), fi.ModTime().Unix()
+			}
+			out = append(out, e)
+		}
+		return nil
+	})
+	if out == nil {
+		out = []map[string]any{}
+	}
+	return ok(map[string]any{"results": out, "truncated": len(out) >= maxSearchResults})
+}
+
+// fsZip packs files and folders (relative to home) into one zip for the phone.
+func (a *Agent) fsZip(ctx context.Context, body json.RawMessage) (json.RawMessage, error) {
+	var p struct{ Paths []string }
+	if err := decode(body, &p); err != nil {
+		return nil, err
+	}
+	if len(p.Paths) == 0 || len(p.Paths) > 500 {
+		return nil, errors.New("select 1–500 entries")
+	}
+	var buf bytes.Buffer
+	zw := zip.NewWriter(&buf)
+	total := int64(0)
+	add := func(base, path string, fi os.FileInfo) error {
+		rel, err := filepath.Rel(base, path)
+		if err != nil {
+			return err
+		}
+		if fi.IsDir() {
+			return nil
+		}
+		if !fi.Mode().IsRegular() {
+			return nil // sockets, devices, broken links
+		}
+		total += fi.Size()
+		if total > maxDownload {
+			return fmt.Errorf("selection too large (max %d MB)", maxDownload>>20)
+		}
+		w, err := zw.Create(filepath.ToSlash(rel))
+		if err != nil {
+			return err
+		}
+		f, err := os.Open(path)
+		if err != nil {
+			return err
+		}
+		defer f.Close()
+		_, err = io.Copy(w, f)
+		return err
+	}
+	for _, rel := range p.Paths {
+		path, err := a.inHome(rel)
+		if err != nil {
+			return nil, fmt.Errorf("%s: %w", rel, err)
+		}
+		base := filepath.Dir(path)
+		err = filepath.Walk(path, func(p string, fi os.FileInfo, err error) error {
+			if err != nil || ctx.Err() != nil {
+				return err
+			}
+			if fi.IsDir() && p != path && strings.HasPrefix(fi.Name(), ".") {
+				return filepath.SkipDir
+			}
+			return add(base, p, fi)
+		})
+		if err != nil {
+			return nil, err
+		}
+	}
+	if err := zw.Close(); err != nil {
+		return nil, err
+	}
+	id, err := a.upload(ctx, buf.Bytes())
+	if err != nil {
+		return nil, err
+	}
+	name := "pocketdeck.zip"
+	if len(p.Paths) == 1 {
+		name = filepath.Base(p.Paths[0]) + ".zip"
+	}
+	return ok(map[string]any{"blob": id, "name": name, "size": buf.Len()})
 }

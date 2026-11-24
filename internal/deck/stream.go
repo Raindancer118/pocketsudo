@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"math"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -56,6 +57,12 @@ func (a *Agent) monitors(ctx context.Context) []monitor {
 		json.Unmarshal([]byte(out), &ms)
 	}
 	return ms
+}
+
+func (a *Agent) monitorsList(ctx context.Context, _ json.RawMessage) (json.RawMessage, error) {
+	ms := a.monitors(ctx)
+	sort.Slice(ms, func(i, j int) bool { return ms[i].X < ms[j].X })
+	return ok(ms)
 }
 
 type streamReq struct {

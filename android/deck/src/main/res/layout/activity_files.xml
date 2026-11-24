@@ -29,6 +29,15 @@
             android:text="@string/files" />
 
         <TextView
+            android:id="@+id/select_action"
+            style="@style/Text.Link"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/download"
+            android:textColor="@color/text1"
+            android:visibility="gone" />
+
+        <TextView
             android:id="@+id/upload"
             style="@style/Text.Link"
             android:layout_width="wrap_content"
@@ -49,6 +58,24 @@
         android:paddingBottom="8dp"
         android:textColor="@color/text2"
         android:textSize="13sp" />
+
+    <EditText
+        android:id="@+id/search"
+        style="@style/Text"
+        android:layout_width="match_parent"
+        android:layout_height="44dp"
+        android:layout_marginStart="20dp"
+        android:layout_marginEnd="20dp"
+        android:layout_marginBottom="8dp"
+        android:autofillHints=""
+        android:background="@drawable/bg_secondary"
+        android:hint="@string/search_hint"
+        android:imeOptions="actionSearch"
+        android:inputType="text"
+        android:paddingStart="12dp"
+        android:paddingEnd="12dp"
+        android:textColorHint="@color/text3"
+        android:textSize="14sp" />
 
     <LinearLayout
         android:id="@+id/closed"
