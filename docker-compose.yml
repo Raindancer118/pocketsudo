@@ -1,0 +1,21 @@
+# Production relay on umaroth/apps. The .env next to this file holds the FCM
+# service account and is never synced by CI.
+services:
+  relay:
+    build:
+      context: .
+      args:
+        VERSION: ${VERSION:-dev}
+    image: pocketsudo-relay:latest
+    container_name: pocketsudo-relay
+    restart: unless-stopped
+    env_file: .env
+    mem_limit: 128m
+    # only NPMplus on the services VM talks to this
+    ports:
+      - "${APP_BIND:-0.0.0.0}:${APP_PORT:-8152}:8080"
+    volumes:
+      - pocketsudo-data:/data
+
+volumes:
+  pocketsudo-data:

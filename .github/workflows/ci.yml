@@ -1,0 +1,152 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+    tags: ['[0-9]+.[0-9]+.[0-9]+']
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  go:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
+        with:
+          go-version-file: go.mod
+      - run: go vet ./...
+      - run: go test -race -count=1 ./...
+      # startup test: the relay must come up and answer its health check
+      - name: Relay starts
+        run: |
+          go build -o relay ./cmd/pocketsudo-relay
+          DATA_DIR=$RUNNER_TEMP/data LISTEN=127.0.0.1:18080 ./relay & pid=$!
+          for i in $(seq 1 20); do LISTEN=127.0.0.1:18080 ./relay healthcheck && break; sleep 0.5; done
+          curl -fsS 127.0.0.1:18080/v1/config
+          kill $pid
+      - name: Helper starts
+        run: |
+          go build -o pocketsudo ./cmd/pocketsudo
+          ./pocketsudo version
+          POCKETSUDO_CONFIG=$RUNNER_TEMP/c.json ./pocketsudo status
+
+  android:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: android
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
+      # run_number only grows, so every CI APK installs over the previous one
+      - name: Version
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/* ]]; then name="$GITHUB_REF_NAME"; else name="edge-${GITHUB_SHA::7}"; fi
+          echo "POCKETSUDO_VERSION_NAME=$name" >> "$GITHUB_ENV"
+          echo "POCKETSUDO_VERSION_CODE=$((GITHUB_RUN_NUMBER + 100))" >> "$GITHUB_ENV"
+      - name: Release signing key
+        if: github.event_name == 'push'
+        env:
+          KEYSTORE_B64: ${{ secrets.POCKETSUDO_KEYSTORE_B64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.POCKETSUDO_KEYSTORE_PASSWORD }}
+        run: |
+          echo "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/pocketsudo.jks"
+          {
+            echo "POCKETSUDO_KEYSTORE=$RUNNER_TEMP/pocketsudo.jks"
+            echo "POCKETSUDO_KEYSTORE_PASSWORD=$KEYSTORE_PASSWORD"
+          } >> "$GITHUB_ENV"
+      - run: ./gradlew --no-daemon testDebugUnitTest lintDebug assembleRelease
+      - name: Name the APK
+        run: |
+          mkdir -p dist
+          cp app/build/outputs/apk/release/app-release.apk "dist/pocketsudo-$POCKETSUDO_VERSION_NAME.apk"
+          cp app/build/outputs/apk/release/app-release.apk dist/pocketsudo.apk
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: pocketsudo-apk
+          path: android/dist/
+
+  deploy:
+    name: Relay auf umaroth ausrollen
+    needs: [go]
+    # enabled once the self-hosted runner exists:
+    #   gh variable set DEPLOY_ENABLED --body true --repo Raindancer118/pocketsudo
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push' && vars.DEPLOY_ENABLED == 'true'
+    runs-on: [self-hosted, pocketsudo]
+    concurrency:
+      group: deploy-umaroth-pocketsudo
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      # The server .env holds the FCM service account and is NEVER overwritten.
+      - name: Sync sources
+        run: |
+          rsync -a --delete \
+            --exclude '.git' --exclude 'android' --exclude 'design' \
+            --exclude '.env' --exclude '*.env' --exclude '.env.*' \
+            --exclude 'data' --exclude 'Project.md' --exclude '.vault-project.enc' \
+            ./ /home/murthag/pocketsudo/
+
+      - name: Production .env exists
+        run: test -f /home/murthag/pocketsudo/.env
+
+      - name: Build and start
+        working-directory: /home/murthag/pocketsudo
+        run: |
+          docker image inspect pocketsudo-relay:latest >/dev/null 2>&1 && docker tag pocketsudo-relay:latest pocketsudo-relay:previous || true
+          VERSION="main-${GITHUB_SHA::7}" docker compose build relay
+          docker compose up -d
+
+      - name: Health check (rolls back on failure)
+        working-directory: /home/murthag/pocketsudo
+        run: |
+          for i in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:8152/healthz >/dev/null && curl -fsS http://127.0.0.1:8152/v1/config | grep -q project_id; then
+              echo "relay is up with push"; exit 0
+            fi
+            sleep 2
+          done
+          docker logs --tail 80 pocketsudo-relay
+          if docker image inspect pocketsudo-relay:previous >/dev/null 2>&1; then
+            docker tag pocketsudo-relay:previous pocketsudo-relay:latest
+            docker compose up -d --no-build
+          fi
+          exit 1
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: [go, android]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
+        with:
+          go-version-file: go.mod
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: pocketsudo-apk
+          path: dist
+      - name: Build binaries
+        run: |
+          for arch in amd64 arm64; do
+            for cmd in pocketsudo pocketsudo-relay; do
+              CGO_ENABLED=0 GOOS=linux GOARCH=$arch go build -trimpath \
+                -ldflags "-s -w -X main.version=$GITHUB_REF_NAME" -o "dist/$cmd-linux-$arch" ./cmd/$cmd
+            done
+          done
+          cp scripts/install-host.sh dist/
+          (cd dist && sha256sum * > SHA256SUMS)
+      - uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2.6.2
+        with:
+          files: dist/*
+          generate_release_notes: true
