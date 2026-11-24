@@ -156,6 +156,7 @@ func newRig(t *testing.T) *rig {
 	}
 	a.batteryDir = t.TempDir()
 	a.hostname = "eclipse"
+	a.velaShell = "" // the machine running the tests may have vela; tests opt in
 	ctx, cancel := context.WithCancel(context.Background())
 	done := make(chan struct{})
 	go func() {

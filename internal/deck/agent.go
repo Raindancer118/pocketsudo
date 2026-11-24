@@ -58,6 +58,8 @@ type Agent struct {
 	lastClip     string // last text that came from the phone, so it is not echoed back
 	stream       *streamer
 	iceServers   []webrtc.ICEServer
+	velaShell    string // vela's quickshell dir: DND and night light go through it
+	velaState    string // its state file; "" = find the newest
 	iconIdx      *iconIndex
 	iconIdxAt    time.Time
 }
@@ -82,7 +84,7 @@ func NewAgent(cfg *Config, sys System, log *slog.Logger) (*Agent, error) {
 	return &Agent{cfg: cfg, sys: sys, log: log, key: key, phonePub: pub,
 		client: host.NewClient(cfg.Relay, cfg.HostToken), guard: protocol.NewReplayGuard(),
 		batteryDir: "/sys/class/power_supply", hostname: hn, downloadDir: defaultDownloadDir(), home: homeDir(), iceServers: defaultICE(),
-		dataDirs: defaultDataDirs(), iconCache: defaultIconCache()}, nil
+		dataDirs: defaultDataDirs(), iconCache: defaultIconCache(), velaShell: defaultVelaShell()}, nil
 }
 
 // Run long-polls the host inbox until ctx ends.
