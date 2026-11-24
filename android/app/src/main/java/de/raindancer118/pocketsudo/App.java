@@ -49,6 +49,8 @@ public class App extends Application {
         ch.setDescription(getString(R.string.channel_requests_desc));
         ch.setLockscreenVisibility(android.app.Notification.VISIBILITY_PRIVATE);
         ch.enableVibration(true);
+        // only honoured once the user allows it, but then sudo is not stuck behind a bedtime mode
+        ch.setBypassDnd(true);
         getSystemService(NotificationManager.class).createNotificationChannel(ch);
         Push.initFromStore(this);
     }

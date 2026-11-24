@@ -70,6 +70,12 @@ public final class Requests {
                         Log.w(TAG, "dropping bad request", e);
                     }
                 }
+            } catch (Relay.HttpException e) {
+                if (e.code == 401 && !p.gone) {
+                    p.gone = true;
+                    new Store(ctx).savePairing(p);
+                }
+                Log.w(TAG, "pending " + p.hostname, e);
             } catch (IOException | ClassCastException e) {
                 Log.w(TAG, "pending " + p.hostname, e);
             }
@@ -126,12 +132,16 @@ public final class Requests {
      * for messages that lead to a visible notification right away.
      */
     static void notifyPlaceholder(Context ctx, Store.Pairing p, String id) {
+        if (App.HANDLED.contains(id)) return;
         show(ctx, p, id, ctx.getString(R.string.notif_from, p.hostname), ctx.getString(R.string.notif_loading), 120, null);
     }
 
     /** Large layout: the command is readable in the heads-up already, the code fills the expanded view. */
     static void notifyRequest(Context ctx, Store.Pairing p, Protocol.Request r) {
-        if (App.HANDLED.contains(r.id)) return;
+        if (App.HANDLED.contains(r.id)) {
+            cancelNotification(ctx, r.id);
+            return;
+        }
         String title = ctx.getString(R.string.notif_title, r.service, r.hostname);
         String cmd = "$ " + (r.command.isEmpty() ? r.service : r.command);
         String text = cmd + "   ·   " + ctx.getString(R.string.notif_code, r.code);
@@ -183,6 +193,18 @@ public final class Requests {
             nm.notify(nid, b.build());
         } catch (SecurityException e) {
             Log.w(TAG, "notify", e);
+        }
+    }
+
+    /** Removes notifications of requests that were decided, cancelled or expired meanwhile. */
+    static void sweepNotifications(Context ctx, List<Pair> pending) {
+        java.util.Set<Integer> keep = new java.util.HashSet<>();
+        for (Pair p : pending) keep.add(notificationId(p.request.id));
+        NotificationManager nm = ctx.getSystemService(NotificationManager.class);
+        for (android.service.notification.StatusBarNotification n : nm.getActiveNotifications()) {
+            if (App.CHANNEL_REQUESTS.equals(n.getNotification().getChannelId()) && !keep.contains(n.getId())) {
+                nm.cancel(n.getId());
+            }
         }
     }
 

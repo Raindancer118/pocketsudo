@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name" translatable="false">PocketSudo</string>
+    <string name="pairing_gone">No longer paired, tap to remove</string>
     <string name="ready">Ready</string>
     <string name="history">History</string>
     <string name="pair_another">Pair another notebook</string>
@@ -14,6 +15,8 @@
     <string name="fix_battery">Turn off battery optimization</string>
     <string name="issue_fullscreen">Requests don\'t open on the lock screen</string>
     <string name="fix_fullscreen">Allow full-screen requests</string>
+    <string name="issue_dnd">Do Not Disturb holds back requests</string>
+    <string name="fix_dnd">Let PocketSudo through</string>
     <string name="issue_push">No push from this relay, requests only show while the app is open</string>
     <string name="issue_key">Fingerprints changed on this phone, pair %1$s again</string>
     <string name="service_on_host">%1$s on %2$s</string>

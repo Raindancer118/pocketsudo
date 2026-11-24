@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="pairing_gone">Nicht mehr gekoppelt, antippen zum Entfernen</string>
     <string name="ready">Bereit</string>
     <string name="history">Verlauf</string>
     <string name="pair_another">Weiteres Notebook koppeln</string>
@@ -13,6 +14,8 @@
     <string name="fix_battery">Akku-Optimierung ausschalten</string>
     <string name="issue_fullscreen">Anfragen öffnen sich nicht auf dem Sperrbildschirm</string>
     <string name="fix_fullscreen">Vollbild-Anfragen erlauben</string>
+    <string name="issue_dnd">Nicht stören hält Anfragen zurück</string>
+    <string name="fix_dnd">PocketSudo durchlassen</string>
     <string name="issue_push">Kein Push von diesem Relay, Anfragen erscheinen nur bei geöffneter App</string>
     <string name="issue_key">Fingerabdrücke auf diesem Handy geändert, %1$s neu koppeln</string>
     <string name="service_on_host">%1$s auf %2$s</string>

@@ -96,8 +96,13 @@ public class MainActivity extends AppCompatActivity {
                 View row = inf.inflate(R.layout.item_host, center, false);
                 ((TextView) row.findViewById(R.id.name)).setText(p.hostname);
                 TextView st = row.findViewById(R.id.state);
-                st.setText(p.keyInvalid ? getString(R.string.issue_key, p.hostname) : getString(R.string.ready));
-                st.setCompoundDrawablesRelativeWithIntrinsicBounds(p.keyInvalid ? R.drawable.dot_warn : R.drawable.dot_live, 0, 0, 0);
+                if (p.gone) {
+                    st.setText(R.string.pairing_gone);
+                    st.setCompoundDrawablesRelativeWithIntrinsicBounds(R.drawable.dot_off, 0, 0, 0);
+                } else {
+                    st.setText(p.keyInvalid ? getString(R.string.issue_key, p.hostname) : getString(R.string.ready));
+                    st.setCompoundDrawablesRelativeWithIntrinsicBounds(p.keyInvalid ? R.drawable.dot_warn : R.drawable.dot_live, 0, 0, 0);
+                }
                 row.setOnClickListener(v -> askUnpair(p));
                 center.addView(row);
             }
@@ -120,6 +125,11 @@ public class MainActivity extends AppCompatActivity {
                 startActivity(new Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
                         .putExtra(Settings.EXTRA_APP_PACKAGE, getPackageName()));
             });
+        } else if (dndBlocks(nm)) {
+            showIssue(R.string.issue_dnd, R.string.fix_dnd, () -> startActivity(
+                    new Intent(Settings.ACTION_CHANNEL_NOTIFICATION_SETTINGS)
+                            .putExtra(Settings.EXTRA_APP_PACKAGE, getPackageName())
+                            .putExtra(Settings.EXTRA_CHANNEL_ID, App.CHANNEL_REQUESTS)));
         } else if (!Push.ready(this)) {
             showIssue(R.string.issue_push, 0, null);
         } else if (!pm.isIgnoringBatteryOptimizations(getPackageName())) {
@@ -129,6 +139,13 @@ public class MainActivity extends AppCompatActivity {
             showIssue(R.string.issue_fullscreen, R.string.fix_fullscreen, () -> startActivity(
                     new Intent(Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT, Uri.parse("package:" + getPackageName()))));
         }
+    }
+
+    /** Do Not Disturb is on and the requests channel may not break through. */
+    private static boolean dndBlocks(NotificationManager nm) {
+        if (nm.getCurrentInterruptionFilter() == NotificationManager.INTERRUPTION_FILTER_ALL) return false;
+        android.app.NotificationChannel ch = nm.getNotificationChannel(App.CHANNEL_REQUESTS);
+        return ch == null || !ch.canBypassDnd();
     }
 
     private void showIssue(int text, int fix, Runnable action) {
@@ -147,6 +164,10 @@ public class MainActivity extends AppCompatActivity {
         if (store.pairings().isEmpty()) return;
         App.IO.execute(() -> {
             List<Requests.Pair> pending = Requests.pending(this);
+            Requests.sweepNotifications(this, pending);
+            runOnUiThread(() -> {
+                if (!isFinishing()) render();
+            });
             if (pending.isEmpty()) return;
             Requests.Pair first = pending.get(0);
             runOnUiThread(() -> {

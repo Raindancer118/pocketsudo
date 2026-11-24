@@ -23,11 +23,13 @@ public final class Store {
         public String relay, channel, hostname, hostPub, phoneToken, keyAlias;
         public long paired;
         public boolean keyInvalid;
+        /** The relay no longer knows this channel (unpaired on the computer). */
+        public boolean gone;
 
         JSONObject toJson() throws JSONException {
             return new JSONObject().put("relay", relay).put("channel", channel).put("hostname", hostname)
                     .put("host_pub", hostPub).put("phone_token", phoneToken).put("key_alias", keyAlias)
-                    .put("paired", paired).put("key_invalid", keyInvalid);
+                    .put("paired", paired).put("key_invalid", keyInvalid).put("gone", gone);
         }
 
         static Pairing fromJson(JSONObject o) {
@@ -40,6 +42,7 @@ public final class Store {
             p.keyAlias = o.optString("key_alias");
             p.paired = o.optLong("paired");
             p.keyInvalid = o.optBoolean("key_invalid");
+            p.gone = o.optBoolean("gone");
             return p;
         }
     }
