@@ -165,4 +165,22 @@
     <string name="apps_search">Find an app …</string>
     <string name="app_started">Started %1$s</string>
     <string name="mod_hold_hint">Hold a modifier to press it alone (Super opens the launcher)</string>
+    <string name="hold_to_start">Hold to start</string>
+    <string name="new_window">New window</string>
+    <string name="win_move">Move</string>
+    <string name="win_close">Close</string>
+    <string name="win_kill">Quit</string>
+    <string name="win_where">Workspace %1$s · %2$s</string>
+    <string name="win_minimized">Minimized · %1$s</string>
+    <string name="app_running_one">Running · %1$s</string>
+    <string name="move_to">Move to which screen?</string>
+    <string name="win_moved">Moved to %1$s</string>
+    <string name="win_closed">Closing %1$s</string>
+    <string name="win_killed">%1$s quit</string>
+    <string name="kill_title">Quit %1$s?</string>
+    <string name="kill_body">The program ends at once. Unsaved changes are lost.</string>
+    <plurals name="app_running_many">
+        <item quantity="one">Running · %d window</item>
+        <item quantity="other">Running · %d windows</item>
+    </plurals>
 </resources>

@@ -55,7 +55,6 @@ public class MainActivity extends AppCompatActivity {
     private ImageButton lockButton, play;
     private ImageView cover;
     private SeekBar volume, brightness;
-    private static final long HOLD_MS = 700;
     private boolean locked, dragging;
     private int tab;
     private String coverUrl;
@@ -222,50 +221,9 @@ public class MainActivity extends AppCompatActivity {
         String meta = getResources().getQuantityString(R.plurals.steps_count, n, n);
         if (sc.needsFinger()) meta += " · ⌁";
         ((TextView) v.findViewById(R.id.meta)).setText(meta);
-        // hold to run: the tile fills up linearly, letting go early cancels
-        View fill = v.findViewById(R.id.fill);
-        fill.setPivotX(0);
-        android.animation.ObjectAnimator hold = android.animation.ObjectAnimator.ofFloat(fill, View.SCALE_X, 0f, 1f);
-        hold.setDuration(HOLD_MS);
-        hold.setInterpolator(new android.view.animation.LinearInterpolator());
-        hold.addListener(new android.animation.AnimatorListenerAdapter() {
-            private boolean cancelled;
-
-            @Override
-            public void onAnimationStart(android.animation.Animator a) {
-                cancelled = false;
-            }
-
-            @Override
-            public void onAnimationCancel(android.animation.Animator a) {
-                cancelled = true;
-            }
-
-            @Override
-            public void onAnimationEnd(android.animation.Animator a) {
-                fill.setScaleX(0f);
-                if (cancelled) return;
-                v.performHapticFeedback(HapticFeedbackConstants.CONFIRM);
-                say(shortcutMessage, getString(R.string.shortcut_running, sc.name));
-                ShortcutRunner.run(MainActivity.this, sc, (ok, err, d) -> say(shortcutMessage, ok ? getString(R.string.shortcut_done, sc.name) : err));
-            }
-        });
-        v.setOnTouchListener((x, e) -> {
-            switch (e.getActionMasked()) {
-                case android.view.MotionEvent.ACTION_DOWN:
-                    hold.start();
-                    break;
-                case android.view.MotionEvent.ACTION_UP:
-                case android.view.MotionEvent.ACTION_CANCEL:
-                    boolean tap = hold.isRunning() && hold.getCurrentPlayTime() < 250;
-                    hold.cancel();
-                    if (tap && e.getActionMasked() == android.view.MotionEvent.ACTION_UP) {
-                        x.performClick();
-                    }
-                    break;
-                default:
-            }
-            return false;
+        Hold.attach(v, v.findViewById(R.id.fill), () -> {
+            say(shortcutMessage, getString(R.string.shortcut_running, sc.name));
+            ShortcutRunner.run(this, sc, (ok, err, d) -> say(shortcutMessage, ok ? getString(R.string.shortcut_done, sc.name) : err));
         });
         v.setOnClickListener(x -> startActivity(new Intent(this, ShortcutEditActivity.class).putExtra("id", sc.id)));
         return v;

@@ -163,4 +163,22 @@
     <string name="apps_search">App suchen …</string>
     <string name="app_started">%1$s gestartet</string>
     <string name="mod_hold_hint">Halten drückt die Taste allein (Super öffnet den Starter)</string>
+    <string name="hold_to_start">Zum Starten halten</string>
+    <string name="new_window">Neues Fenster</string>
+    <string name="win_move">Verschieben</string>
+    <string name="win_close">Schließen</string>
+    <string name="win_kill">Beenden</string>
+    <string name="win_where">Workspace %1$s · %2$s</string>
+    <string name="win_minimized">Minimiert · %1$s</string>
+    <string name="app_running_one">Läuft · %1$s</string>
+    <string name="move_to">Auf welchen Bildschirm?</string>
+    <string name="win_moved">Auf %1$s verschoben</string>
+    <string name="win_closed">%1$s wird geschlossen</string>
+    <string name="win_killed">%1$s beendet</string>
+    <string name="kill_title">%1$s beenden?</string>
+    <string name="kill_body">Das Programm endet sofort. Nicht gespeicherte Änderungen gehen verloren.</string>
+    <plurals name="app_running_many">
+        <item quantity="one">Läuft · %d Fenster</item>
+        <item quantity="other">Läuft · %d Fenster</item>
+    </plurals>
 </resources>
