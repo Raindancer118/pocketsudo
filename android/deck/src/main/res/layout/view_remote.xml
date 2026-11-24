@@ -109,7 +109,7 @@
             <TextView android:id="@+id/clip_get" style="@style/Tile" android:text="@string/tile_clip_get" />
             <TextView android:id="@+id/clip_send" style="@style/Tile" android:text="@string/tile_clip_send" />
             <TextView android:id="@+id/open_link" style="@style/Tile" android:text="@string/tile_open_link" />
-            <View style="@style/Tile" android:layout_marginEnd="0dp" android:background="@null" android:clickable="false" android:focusable="false" />
+            <TextView android:id="@+id/stream" style="@style/Tile" android:layout_marginEnd="0dp" android:text="@string/tile_stream" />
         </LinearLayout>
 
         <TextView
