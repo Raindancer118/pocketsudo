@@ -658,6 +658,7 @@ drawable bg_circle
 drawable bg_cover
 drawable bg_danger
 drawable bg_dialog
+drawable bg_hold
 drawable bg_key
 drawable bg_key_on
 drawable bg_link
@@ -866,6 +867,7 @@ id end
 id expand_activities_button
 id expanded_menu
 id files
+id fill
 id finger_hint
 id fingerprint_description
 id fingerprint_error

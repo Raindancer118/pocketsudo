@@ -78,7 +78,7 @@
     <string name="combo_hint">Tap keys, then Combo again</string>
     <string name="tab_shortcuts">Shortcuts</string>
     <string name="add_templates">Add templates</string>
-    <string name="shortcuts_hint">Tap to run, hold to edit</string>
+    <string name="shortcuts_hint">Hold to run, tap to edit</string>
     <string name="new_shortcut">New shortcut</string>
     <string name="shortcut_done">%1$s done</string>
     <string name="shortcut_running">Running %1$s …</string>

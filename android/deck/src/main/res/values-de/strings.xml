@@ -76,7 +76,7 @@
     <string name="combo_hint">Tasten antippen, dann nochmal Kombi</string>
     <string name="tab_shortcuts">Kurzbefehle</string>
     <string name="add_templates">Vorlagen hinzufügen</string>
-    <string name="shortcuts_hint">Antippen zum Ausführen, halten zum Bearbeiten</string>
+    <string name="shortcuts_hint">Halten zum Ausführen, antippen zum Bearbeiten</string>
     <string name="new_shortcut">Neuer Kurzbefehl</string>
     <string name="shortcut_done">%1$s ausgeführt</string>
     <string name="shortcut_running">Führt %1$s aus …</string>

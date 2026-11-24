@@ -496,7 +496,7 @@
     <string name="shortcut_done">%1$s done</string>
     <string name="shortcut_missing">Shortcut not found</string>
     <string name="shortcut_running">Running %1$s …</string>
-    <string name="shortcuts_hint">Tap to run, hold to edit</string>
+    <string name="shortcuts_hint">Hold to run, tap to edit</string>
     <string name="status_bar_notification_info_overflow">999+</string>
     <string name="step_app">Open app</string>
     <string name="step_brightness">Brightness</string>

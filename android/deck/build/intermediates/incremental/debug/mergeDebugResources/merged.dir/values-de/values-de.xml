@@ -156,7 +156,7 @@
     <string name="shortcut_done">%1$s ausgeführt</string>
     <string name="shortcut_missing">Kurzbefehl nicht gefunden</string>
     <string name="shortcut_running">Führt %1$s aus …</string>
-    <string name="shortcuts_hint">Antippen zum Ausführen, halten zum Bearbeiten</string>
+    <string name="shortcuts_hint">Halten zum Ausführen, antippen zum Bearbeiten</string>
     <string msgid="6277540029070332960" name="status_bar_notification_info_overflow">"999+"</string>
     <string name="step_app">App öffnen</string>
     <string name="step_brightness">Helligkeit</string>
