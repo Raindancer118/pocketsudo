@@ -107,7 +107,10 @@ public class FilesActivity extends AppCompatActivity {
     private void back() {
         if (!selected.isEmpty()) {
             selected.clear();
-            load(path);
+            android.transition.TransitionManager.beginDelayedTransition(list,
+                    new android.transition.AutoTransition().setDuration(180));
+            markAll();
+            renderSelection();
         } else if (search.getText().length() > 0) {
             search.setText("");
         } else if (!path.isEmpty()) {
@@ -176,11 +179,12 @@ public class FilesActivity extends AppCompatActivity {
             View row = inf.inflate(R.layout.item_file, list, false);
             TextView name = row.findViewById(R.id.name), meta = row.findViewById(R.id.meta);
             name.setText(n);
-            name.setCompoundDrawablesRelativeWithIntrinsicBounds(dir ? R.drawable.ic_folder : R.drawable.ic_file, 0, 0, 0);
+            name.setCompoundDrawablesRelativeWithIntrinsicBounds(dir ? R.drawable.ic_folder : FileTypes.icon(n), 0, 0, 0);
             String when = DateUtils.getRelativeTimeSpanString(e.optLong("mtime") * 1000).toString();
             String info = dir ? when : Formatter.formatShortFileSize(this, e.optLong("size")) + " · " + when;
             meta.setText(fromSearch ? "~/" + rel : info);
-            mark(row, selected.contains(rel));
+            row.setTag(rel);
+            mark(row, selected.contains(rel), !selected.isEmpty());
             row.setOnClickListener(v -> {
                 if (!selected.isEmpty()) {
                     toggle(row, rel);
@@ -211,13 +215,32 @@ public class FilesActivity extends AppCompatActivity {
     // ---- selection ----
 
     private void toggle(View row, String rel) {
+        boolean wasSelecting = !selected.isEmpty();
         if (!selected.remove(rel)) selected.add(rel);
-        mark(row, selected.contains(rel));
+        boolean selecting = !selected.isEmpty();
+        if (wasSelecting != selecting) {
+            // entering or leaving selection: every row slides and gets (or loses) its circle
+            android.transition.TransitionManager.beginDelayedTransition(list,
+                    new android.transition.AutoTransition().setDuration(180));
+            markAll();
+        } else {
+            mark(row, selected.contains(rel), true);
+        }
         renderSelection();
     }
 
-    private void mark(View row, boolean on) {
-        row.setBackgroundResource(on ? R.drawable.bg_key : R.drawable.bg_link);
+    private void markAll() {
+        boolean selecting = !selected.isEmpty();
+        for (int i = 0; i < list.getChildCount(); i++) {
+            View row = list.getChildAt(i);
+            if (row.getTag() instanceof String) mark(row, selected.contains((String) row.getTag()), selecting);
+        }
+    }
+
+    private void mark(View row, boolean on, boolean selecting) {
+        android.widget.ImageView check = row.findViewById(R.id.check);
+        check.setVisibility(selecting ? View.VISIBLE : View.GONE);
+        check.setImageResource(on ? R.drawable.check_on : R.drawable.check_off);
     }
 
     private void renderSelection() {

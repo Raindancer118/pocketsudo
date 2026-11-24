@@ -12,23 +12,47 @@
         android:layout_height="1px"
         android:background="@color/line" />
 
-    <TextView
-        android:id="@+id/name"
-        style="@style/Text"
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="12dp"
-        android:drawablePadding="12dp"
-        android:ellipsize="middle"
-        android:maxLines="1"
-        android:textSize="15sp" />
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
 
-    <TextView
-        android:id="@+id/meta"
-        style="@style/Text.Small"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginStart="32dp"
-        android:layout_marginTop="2dp"
-        android:layout_marginBottom="12dp" />
+        <!-- selection circle: shown for every row while selecting, the row slides over -->
+        <ImageView
+            android:id="@+id/check"
+            android:layout_width="22dp"
+            android:layout_height="22dp"
+            android:layout_marginEnd="14dp"
+            android:importantForAccessibility="no"
+            android:src="@drawable/check_off"
+            android:visibility="gone" />
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/name"
+                style="@style/Text"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:drawablePadding="12dp"
+                android:ellipsize="middle"
+                android:maxLines="1"
+                android:textSize="15sp" />
+
+            <TextView
+                android:id="@+id/meta"
+                style="@style/Text.Small"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="32dp"
+                android:layout_marginTop="2dp"
+                android:layout_marginBottom="12dp" />
+        </LinearLayout>
+    </LinearLayout>
 </LinearLayout>
