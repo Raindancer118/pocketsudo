@@ -135,13 +135,11 @@
         <item quantity="one">1 step</item>
         <item quantity="other">%d steps</item>
     </plurals>
-    <string name="stream">Stream</string>
     <string name="tile_stream">Stream</string>
     <string name="stream_source">What to show</string>
     <string name="stream_audio">Sound</string>
     <string name="stream_start">Start stream</string>
     <string name="stream_stop">Stop stream</string>
-    <string name="camera">Webcam</string>
     <string name="audio_none">None</string>
     <string name="audio_system">Computer</string>
     <string name="audio_mic">Microphone</string>
@@ -152,9 +150,14 @@
     <string name="loading_monitors">Loading screens …</string>
     <string name="download">Download</string>
     <string name="search_hint">Search in this folder</string>
-    <string name="selected">%1$d selected</string>
+    <plurals name="selected">
+        <item quantity="one">%1$d selected</item>
+        <item quantity="other">%1$d selected</item>
+    </plurals>
     <string name="no_results">Nothing found</string>
-    <string name="zipping">Packing %1$d items …</string>
-    <string name="file_details">%1$s · %2$s</string>
+    <plurals name="zipping">
+        <item quantity="one">Packing %1$d item …</item>
+        <item quantity="other">Packing %1$d items …</item>
+    </plurals>
     <string name="switch_source">Switch source</string>
 </resources>

@@ -224,7 +224,7 @@ public class FilesActivity extends AppCompatActivity {
         boolean selecting = !selected.isEmpty();
         selectAction.setVisibility(selecting ? View.VISIBLE : View.GONE);
         upload.setVisibility(selecting || closed.getVisibility() == View.VISIBLE ? View.GONE : View.VISIBLE);
-        if (selecting) say(getString(R.string.selected, selected.size()));
+        if (selecting) say(getResources().getQuantityString(R.plurals.selected, selected.size(), selected.size()));
         else if (message.getText().toString().matches("\\d+ .*")) say(null);
     }
 
@@ -232,7 +232,7 @@ public class FilesActivity extends AppCompatActivity {
         String[] paths = selected.toArray(new String[0]);
         selected.clear();
         renderSelection();
-        say(getString(R.string.zipping, paths.length));
+        say(getResources().getQuantityString(R.plurals.zipping, paths.length, paths.length));
         JSONObject body = new JSONObject();
         try {
             JSONArray a = new JSONArray();
