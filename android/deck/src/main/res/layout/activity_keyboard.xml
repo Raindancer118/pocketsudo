@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:fitsSystemWindows="true"
@@ -64,58 +65,104 @@
             android:text="@string/session_open_hint" />
     </LinearLayout>
 
-    <ScrollView
+    <LinearLayout
         android:id="@+id/opened"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
+        android:orientation="vertical"
         android:visibility="gone">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp">
+
+            <EditText
+                android:id="@+id/text"
+                style="@style/Text"
+                android:layout_width="0dp"
+                android:layout_height="44dp"
+                android:layout_weight="1"
+                android:autofillHints=""
+                android:background="@drawable/bg_secondary"
+                android:hint="@string/type_hint"
+                android:imeOptions="actionSend"
+                android:inputType="text"
+                android:paddingStart="12dp"
+                android:paddingEnd="12dp"
+                android:textColorHint="@color/text3" />
+
+            <TextView
+                android:id="@+id/send"
+                style="@style/Button.Primary"
+                android:layout_width="wrap_content"
+                android:layout_height="44dp"
+                android:layout_marginStart="8dp"
+                android:paddingStart="18dp"
+                android:paddingEnd="18dp"
+                android:text="@string/type_send" />
+        </LinearLayout>
+
+        <!-- combo bar: tap Kombi, tap keys, tap Kombi again to send them together -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="52dp"
+            android:gravity="center_vertical"
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp">
+
+            <TextView
+                android:id="@+id/combo"
+                style="@style/Text"
+                android:layout_width="wrap_content"
+                android:layout_height="36dp"
+                android:background="@drawable/bg_key"
+                android:gravity="center"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp"
+                android:text="@string/combo"
+                android:textFontWeight="600"
+                android:textSize="13sp" />
+
+            <TextView
+                android:id="@+id/combo_preview"
+                style="@style/Text.Command"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="12dp"
+                android:layout_weight="1"
+                android:ellipsize="start"
+                android:maxLines="1"
+                android:textColor="@color/text2"
+                android:textSize="14sp" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/message"
+            style="@style/Text.Small"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:paddingBottom="6dp"
+            android:visibility="gone" />
+
+        <!-- pushes the keyboard to the bottom, where the thumbs are -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            tools:ignore="NestedWeights" />
 
         <LinearLayout
             android:id="@+id/keys"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:paddingStart="16dp"
-            android:paddingEnd="16dp"
-            android:paddingBottom="24dp">
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:gravity="center_vertical">
-
-                <EditText
-                    android:id="@+id/text"
-                    style="@style/Text"
-                    android:layout_width="0dp"
-                    android:layout_height="48dp"
-                    android:layout_weight="1"
-                    android:autofillHints=""
-                    android:background="@drawable/bg_secondary"
-                    android:hint="@string/type_hint"
-                    android:imeOptions="actionSend"
-                    android:inputType="text"
-                    android:paddingStart="12dp"
-                    android:paddingEnd="12dp"
-                    android:textColorHint="@color/text3" />
-
-                <TextView
-                    android:id="@+id/send"
-                    style="@style/Button.Primary"
-                    android:layout_width="wrap_content"
-                    android:layout_marginStart="8dp"
-                    android:text="@string/type_send" />
-            </LinearLayout>
-
-            <TextView
-                android:id="@+id/message"
-                style="@style/Text.Small"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:gravity="center"
-                android:visibility="gone" />
-        </LinearLayout>
-    </ScrollView>
+            android:paddingStart="4dp"
+            android:paddingEnd="4dp"
+            android:paddingBottom="8dp" />
+    </LinearLayout>
 </LinearLayout>

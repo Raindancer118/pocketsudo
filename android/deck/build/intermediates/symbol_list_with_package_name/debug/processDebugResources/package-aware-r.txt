@@ -658,6 +658,7 @@ drawable bg_circle
 drawable bg_cover
 drawable bg_danger
 drawable bg_dialog
+drawable bg_key
 drawable bg_key_on
 drawable bg_link
 drawable bg_primary
@@ -836,6 +837,8 @@ id clip_send
 id closed
 id code
 id collapseActionView
+id combo
+id combo_preview
 id content
 id contentPanel
 id cover
@@ -914,6 +917,7 @@ id right_icon
 id right_side
 id scan
 id screen
+id screens
 id screenshot
 id scrollIndicatorDown
 id scrollIndicatorUp
@@ -1114,7 +1118,8 @@ string charging
 string clip_empty
 string clip_got
 string clip_sent
-string combos
+string combo
+string combo_hint
 string common_google_play_services_enable_button
 string common_google_play_services_enable_text
 string common_google_play_services_enable_title
@@ -1157,12 +1162,10 @@ string generic_error_no_keyguard
 string generic_error_user_canceled
 string key_invalid
 string keyboard
-string keys
 string link_opened
 string lock
 string locked
 string locked_done
-string modifiers
 string needs_session
 string next
 string no_answer
@@ -1190,8 +1193,6 @@ string screenshot
 string screenshot_saved
 string screenshot_taking
 string search_menu_title
-string send_file
-string sent
 string session_left
 string session_open
 string session_open_hint

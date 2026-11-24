@@ -330,9 +330,8 @@ func TestKeyboardNeedsSession(t *testing.T) {
 
 func TestScreenshotAndFileTransfer(t *testing.T) {
 	r := newRig(t)
+	r.sys.out["hyprctl monitors -j"] = `[{"name":"DP-7","width":1920,"height":1080,"x":0},{"name":"eDP-1","width":2560,"height":1600,"x":1920}]`
 	r.sys.out["grim"] = "\xff\xd8JPEGDATA"
-	r.sys.mu.Lock()
-	r.sys.mu.Unlock()
 	res := result(t, r.send("screenshot", nil, false))
 	if res.OK {
 		t.Fatal("screenshot without a remote session")
@@ -342,10 +341,15 @@ func TestScreenshotAndFileTransfer(t *testing.T) {
 	if !res.OK {
 		t.Fatalf("screenshot: %+v", res)
 	}
-	var shot struct{ Blob string }
-	json.Unmarshal(res.Data, &shot)
+	var shots struct {
+		Screens []struct{ Name, Blob string }
+	}
+	json.Unmarshal(res.Data, &shots)
+	if len(shots.Screens) != 2 || shots.Screens[0].Name != "DP-7" || !r.sys.ran("grim -t jpeg -q 85 -o eDP-1") {
+		t.Fatalf("one image per screen expected: %+v %v", shots, r.sys.calls)
+	}
 	var raw []byte
-	if _, err := r.phone.Raw(context.Background(), "GET", "/v1/channels/"+r.channel+"/blobs/"+shot.Blob, nil, &raw); err != nil {
+	if _, err := r.phone.Raw(context.Background(), "GET", "/v1/channels/"+r.channel+"/blobs/"+shots.Screens[1].Blob, nil, &raw); err != nil {
 		t.Fatal(err)
 	}
 	plain, err := protocol.OpenBytes(r.key, raw)

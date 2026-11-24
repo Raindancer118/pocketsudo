@@ -52,10 +52,6 @@
     <string name="bio_session">Remote control for %1$s</string>
     <string name="type_hint">Type text …</string>
     <string name="type_send">Type</string>
-    <string name="modifiers">Hold</string>
-    <string name="keys">Keys</string>
-    <string name="combos">Shortcuts</string>
-    <string name="sent">Sent</string>
     <string name="screenshot">Screenshot</string>
     <string name="share">Share</string>
     <string name="share_target">Send to computer</string>
@@ -78,4 +74,6 @@
     <string name="tile_clip_get">Get clipboard</string>
     <string name="tile_clip_send">Send clipboard</string>
     <string name="tile_open_link">Open link</string>
+    <string name="combo">Combo</string>
+    <string name="combo_hint">Tap keys, then Combo again</string>
 </resources>

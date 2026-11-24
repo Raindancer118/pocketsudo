@@ -43,7 +43,8 @@
     <string name="clip_empty">Die Zwischenablage des Handys enthält keinen Text</string>
     <string name="clip_got">Zwischenablage aufs Handy kopiert</string>
     <string name="clip_sent">Zwischenablage gesendet</string>
-    <string name="combos">Kombinationen</string>
+    <string name="combo">Kombi</string>
+    <string name="combo_hint">Tasten antippen, dann nochmal Kombi</string>
     <string msgid="2523291102206661146" name="common_google_play_services_enable_button">Aktivieren</string>
     <string msgid="227660514972886228" name="common_google_play_services_enable_text">%1$s funktioniert erst nach der Aktivierung der Google Play-Dienste.</string>
     <string msgid="5122002158466380389" name="common_google_play_services_enable_title">Google Play-Dienste aktivieren</string>
@@ -85,12 +86,10 @@
     <string msgid="7309881387583143581" name="generic_error_user_canceled">"Authentifizierung vom Nutzer abgebrochen."</string>
     <string name="key_invalid">Fingerabdrücke geändert – neu koppeln</string>
     <string name="keyboard">Tastatur</string>
-    <string name="keys">Tasten</string>
     <string name="link_opened">Link geöffnet</string>
     <string name="lock">Sperren</string>
     <string name="locked">Gesperrt</string>
     <string name="locked_done">Gesperrt</string>
-    <string name="modifiers">Gedrückt halten</string>
     <string name="needs_session">Öffne zuerst die Fernsteuerung unter Tastatur</string>
     <string name="next">Weiter</string>
     <string name="no_answer">Keine Antwort – läuft pocketdeck auf dem Computer?</string>
@@ -114,12 +113,10 @@
     <string name="playing_on">Läuft auf %1$s</string>
     <string name="previous">Zurück</string>
     <string name="scan">Code scannen</string>
-    <string name="screenshot">Bildschirmfoto</string>
+    <string name="screenshot">Screenshot</string>
     <string name="screenshot_saved">In Bilder/PocketDeck gespeichert</string>
-    <string name="screenshot_taking">Macht Bildschirmfoto …</string>
+    <string name="screenshot_taking">Macht Screenshots …</string>
     <string msgid="6264217191555673260" name="search_menu_title">"Suche"</string>
-    <string name="send_file">Datei senden</string>
-    <string name="sent">Gesendet</string>
     <string name="session_left">noch %1$d min</string>
     <string name="session_open">Fernsteuerung öffnen</string>
     <string name="session_open_hint">Ein Fingerabdruck öffnet die Tastatursteuerung für 15 Minuten</string>
@@ -134,7 +131,7 @@
     <string name="tile_files">Dateien</string>
     <string name="tile_keyboard">Tastatur</string>
     <string name="tile_open_link">Link öffnen</string>
-    <string name="tile_screenshot">Foto</string>
+    <string name="tile_screenshot">Screenshot</string>
     <string name="tile_send_file">Hochladen</string>
     <string name="type_hint">Text eingeben …</string>
     <string name="type_send">Tippen</string>

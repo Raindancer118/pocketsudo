@@ -2,19 +2,19 @@
 <issues format="6" by="lint 8.13.0">
 
     <issue
-        id="UnusedResources"
+        id="ClickableViewAccessibility"
         severity="Warning"
-        message="The resource `R.string.send_file` appears to be unused"
-        category="Performance"
-        priority="3"
-        summary="Unused resources"
-        explanation="Unused resources make applications larger and slow down builds.&#xA;&#xA;&#xA;The unused resource check can ignore tests. If you want to include resources that are only referenced from tests, consider packaging them in a test source set instead.&#xA;&#xA;You can include test sources in the unused resource check by setting the system property lint.unused-resources.include-tests =true, and to exclude them (usually for performance reasons), use lint.unused-resources.exclude-tests =true.&#xA;,"
-        errorLine1="    &lt;string name=&quot;send_file&quot;>Send file&lt;/string>"
-        errorLine2="            ~~~~~~~~~~~~~~~~">
+        message="`ZoomImageView#onTouchEvent` should call `ZoomImageView#performClick` when a click is detected"
+        category="Accessibility"
+        priority="6"
+        summary="Accessibility in Custom Views"
+        explanation="If a `View` that overrides `onTouchEvent` or uses an `OnTouchListener` does not also implement `performClick` and call it when clicks are detected, the `View` may not handle accessibility actions properly. Logic handling the click actions should ideally be placed in `View#performClick` as some accessibility services invoke `performClick` when a click action should occur."
+        errorLine1="    public boolean onTouchEvent(MotionEvent e) {"
+        errorLine2="                   ~~~~~~~~~~~~">
         <location
-            file="/home/tom/Projekte/SEProjects/pocketsudo/android/deck/src/main/res/values/strings.xml"
-            line="59"
-            column="13"/>
+            file="/home/tom/Projekte/SEProjects/pocketsudo/android/deck/src/main/java/de/raindancer118/pocketdeck/ZoomImageView.java"
+            line="132"
+            column="20"/>
     </issue>
 
 </issues>

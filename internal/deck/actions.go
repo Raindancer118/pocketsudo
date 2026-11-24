@@ -539,17 +539,44 @@ func defaultDownloadDir() string {
 	return filepath.Join(home, "Downloads", "PocketDeck")
 }
 
-// screenshot seals a JPEG of all screens into a blob for the phone.
+// screenshot seals one JPEG per monitor (left to right) into blobs.
 func (a *Agent) screenshot(ctx context.Context, _ json.RawMessage) (json.RawMessage, error) {
-	img, err := a.sys.Run(ctx, "grim", "-t", "jpeg", "-q", "85", "-")
-	if err != nil || len(img) == 0 {
-		return nil, fmt.Errorf("screenshot failed: %v", err)
+	type screen struct {
+		Name   string `json:"name"`
+		Blob   string `json:"blob"`
+		Width  int    `json:"width"`
+		Height int    `json:"height"`
+		X      int    `json:"-"`
 	}
-	id, err := a.upload(ctx, []byte(img))
-	if err != nil {
-		return nil, err
+	var mons []screen
+	if out, err := a.sys.Run(ctx, "hyprctl", "monitors", "-j"); err == nil {
+		json.Unmarshal([]byte(out), &mons)
 	}
-	return ok(map[string]any{"blob": id, "size": len(img)})
+	sort.Slice(mons, func(i, j int) bool { return mons[i].X < mons[j].X })
+	if len(mons) == 0 {
+		mons = []screen{{Name: ""}} // not Hyprland: one image of everything
+	}
+	var shots []screen
+	for _, m := range mons {
+		args := []string{"-t", "jpeg", "-q", "85"}
+		if m.Name != "" {
+			args = append(args, "-o", m.Name)
+		}
+		img, err := a.sys.Run(ctx, "grim", append(args, "-")...)
+		if err != nil || len(img) == 0 {
+			continue
+		}
+		id, err := a.upload(ctx, []byte(img))
+		if err != nil {
+			return nil, err
+		}
+		m.Blob = id
+		shots = append(shots, m)
+	}
+	if len(shots) == 0 {
+		return nil, errors.New("screenshot failed")
+	}
+	return ok(map[string]any{"screens": shots})
 }
 
 func (a *Agent) upload(ctx context.Context, plain []byte) (string, error) {

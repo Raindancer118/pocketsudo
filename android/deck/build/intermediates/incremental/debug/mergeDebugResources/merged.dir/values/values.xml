@@ -382,7 +382,8 @@
     <string name="clip_empty">The phone clipboard holds no text</string>
     <string name="clip_got">Clipboard copied to this phone</string>
     <string name="clip_sent">Clipboard sent</string>
-    <string name="combos">Shortcuts</string>
+    <string name="combo">Combo</string>
+    <string name="combo_hint">Tap keys, then Combo again</string>
     <string msgid="2523291102206661146" name="common_google_play_services_enable_button">Enable</string>
     <string msgid="227660514972886228" name="common_google_play_services_enable_text"><ns1:g id="app_name">%1$s</ns1:g> won\'t work unless you enable Google Play services.</string>
     <string msgid="5122002158466380389" name="common_google_play_services_enable_title">Enable Google Play services</string>
@@ -425,12 +426,10 @@
     <string name="generic_error_user_canceled">Authentication canceled by user.</string>
     <string name="key_invalid">Fingerprints changed – pair again</string>
     <string name="keyboard">Keyboard</string>
-    <string name="keys">Keys</string>
     <string name="link_opened">Link opened</string>
     <string name="lock">Lock</string>
     <string name="locked">Locked</string>
     <string name="locked_done">Locked</string>
-    <string name="modifiers">Hold</string>
     <string name="needs_session">Open remote control under Keyboard first</string>
     <string name="next">Next</string>
     <string name="no_answer">No answer – is pocketdeck running on the computer?</string>
@@ -458,8 +457,6 @@
     <string name="screenshot_saved">Saved in Pictures/PocketDeck</string>
     <string name="screenshot_taking">Taking screenshot …</string>
     <string name="search_menu_title">Search</string>
-    <string name="send_file">Send file</string>
-    <string name="sent">Sent</string>
     <string name="session_left">%1$d min</string>
     <string name="session_open">Open remote control</string>
     <string name="session_open_hint">One fingerprint opens keyboard control for 15 minutes</string>

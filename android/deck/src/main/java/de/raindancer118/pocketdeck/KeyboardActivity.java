@@ -1,5 +1,6 @@
 package de.raindancer118.pocketdeck;
 
+import android.content.res.Configuration;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -8,7 +9,6 @@ import android.view.HapticFeedbackConstants;
 import android.view.View;
 import android.view.inputmethod.EditorInfo;
 import android.widget.EditText;
-import android.widget.HorizontalScrollView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
@@ -17,32 +17,50 @@ import androidx.appcompat.app.AppCompatActivity;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
-
-/** Virtual keyboard: text, sticky modifiers, special keys and common shortcuts. */
+/**
+ * A German QWERTZ keyboard. Modifiers latch for the next key; "Kombi" collects
+ * any number of keys and sends them together when tapped again.
+ */
 public class KeyboardActivity extends AppCompatActivity {
-    private static final String[][] SPECIAL = {
-            {"Esc", "esc"}, {"Tab", "tab"}, {"⌫", "backspace"}, {"Entf", "delete"}, {"↵", "enter"},
-            {"←", "left"}, {"↑", "up"}, {"↓", "down"}, {"→", "right"}, {"␣", "space"},
-            {"Pos1", "home"}, {"Ende", "end"}, {"Bild↑", "pageup"}, {"Bild↓", "pagedown"}, {"Druck", "print"},
+    /** label, key name for the agent, width weight */
+    private static final Object[][][] ROWS = {
+            {{"Esc", "esc", 1.2}, {"F1", "f1", 1.0}, {"F2", "f2", 1.0}, {"F3", "f3", 1.0}, {"F4", "f4", 1.0},
+                    {"F5", "f5", 1.0}, {"F6", "f6", 1.0}, {"F7", "f7", 1.0}, {"F8", "f8", 1.0}, {"F9", "f9", 1.0},
+                    {"F10", "f10", 1.0}, {"F11", "f11", 1.0}, {"F12", "f12", 1.0}, {"Entf", "delete", 1.2}},
+            {{"^", "asciicircum", 1.0}, {"1", "1", 1.0}, {"2", "2", 1.0}, {"3", "3", 1.0}, {"4", "4", 1.0},
+                    {"5", "5", 1.0}, {"6", "6", 1.0}, {"7", "7", 1.0}, {"8", "8", 1.0}, {"9", "9", 1.0},
+                    {"0", "0", 1.0}, {"ß", "ssharp", 1.0}, {"´", "dead_acute", 1.0}, {"⌫", "backspace", 1.8}},
+            {{"Tab", "tab", 1.5}, {"q", "q", 1.0}, {"w", "w", 1.0}, {"e", "e", 1.0}, {"r", "r", 1.0}, {"t", "t", 1.0},
+                    {"z", "z", 1.0}, {"u", "u", 1.0}, {"i", "i", 1.0}, {"o", "o", 1.0}, {"p", "p", 1.0},
+                    {"ü", "udiaeresis", 1.0}, {"+", "plus", 1.0}, {"↵", "enter", 1.3}},
+            {{"Caps", "capslock", 1.8}, {"a", "a", 1.0}, {"s", "s", 1.0}, {"d", "d", 1.0}, {"f", "f", 1.0},
+                    {"g", "g", 1.0}, {"h", "h", 1.0}, {"j", "j", 1.0}, {"k", "k", 1.0}, {"l", "l", 1.0},
+                    {"ö", "odiaeresis", 1.0}, {"ä", "adiaeresis", 1.0}, {"#", "numbersign", 1.0}},
+            {{"⇧", "shift", 1.3}, {"<", "less", 1.0}, {"y", "y", 1.0}, {"x", "x", 1.0}, {"c", "c", 1.0},
+                    {"v", "v", 1.0}, {"b", "b", 1.0}, {"n", "n", 1.0}, {"m", "m", 1.0}, {",", "comma", 1.0},
+                    {".", "period", 1.0}, {"-", "minus", 1.0}, {"↑", "up", 1.0}, {"⇧", "shift", 1.3}},
+            {{"Strg", "ctrl", 1.3}, {"❖", "super", 1.2}, {"Alt", "alt", 1.2}, {"", "space", 5.0},
+                    {"AltGr", "altgr", 1.3}, {"←", "left", 1.0}, {"↓", "down", 1.0}, {"→", "right", 1.0}},
     };
-    private static final String[][] COMBOS = {
-            {"Super", "super"}, {"Strg+Alt+T", "ctrl+alt+t"}, {"Alt+Tab", "alt+tab"}, {"Strg+C", "ctrl+c"},
-            {"Strg+V", "ctrl+v"}, {"Strg+Z", "ctrl+z"}, {"Strg+S", "ctrl+s"}, {"Strg+W", "ctrl+w"},
-            {"Super+Q", "super+q"}, {"Super+Enter", "super+enter"},
-    };
-    private static final String[][] MODS = {{"Strg", "ctrl"}, {"Alt", "alt"}, {"Shift", "shift"}, {"Super", "super"}};
+    private static final Map<String, String> MOD_LABEL = Map.of(
+            "ctrl", "Strg", "alt", "Alt", "shift", "Shift", "super", "Super", "altgr", "AltGr");
 
     private Deck deck;
-    private final Set<String> held = new LinkedHashSet<>();
     private final Handler main = new Handler(Looper.getMainLooper());
+    private final Set<String> latched = new LinkedHashSet<>();
+    private final List<String> combo = new ArrayList<>();
+    private final Map<String, List<TextView>> views = new HashMap<>();
+    private boolean comboMode;
     private View closed, opened;
-    private TextView session, message;
+    private TextView session, message, comboButton, comboPreview;
     private EditText text;
-    private LinearLayout keys;
-    private final java.util.Map<String, TextView> modViews = new java.util.HashMap<>();
     private final Runnable ticker = new Runnable() {
         @Override
         public void run() {
@@ -61,9 +79,13 @@ public class KeyboardActivity extends AppCompatActivity {
         session = findViewById(R.id.session);
         message = findViewById(R.id.message);
         text = findViewById(R.id.text);
-        keys = findViewById(R.id.keys);
+        comboButton = findViewById(R.id.combo);
+        comboPreview = findViewById(R.id.combo_preview);
         findViewById(R.id.back).setOnClickListener(v -> finish());
-        findViewById(R.id.open).setOnClickListener(v -> openSession());
+        findViewById(R.id.open).setOnClickListener(v -> Session.open(this, (ok, err) -> {
+            if (!ok) say(err);
+            render();
+        }));
         findViewById(R.id.send).setOnClickListener(v -> typeText());
         text.setOnEditorActionListener((v, id, e) -> {
             if (id == EditorInfo.IME_ACTION_SEND) {
@@ -72,39 +94,8 @@ public class KeyboardActivity extends AppCompatActivity {
             }
             return false;
         });
-
-        section(R.string.modifiers);
-        LinearLayout mods = row();
-        for (String[] m : MODS) {
-            TextView t = key(m[0], 1f);
-            t.setOnClickListener(v -> toggle(m[1]));
-            modViews.put(m[1], t);
-            mods.addView(t);
-        }
-        section(R.string.keys);
-        for (int i = 0; i < SPECIAL.length; i += 5) {
-            LinearLayout r = row();
-            for (int j = i; j < i + 5; j++) {
-                String[] k = SPECIAL[j];
-                TextView t = key(k[0], 1f);
-                t.setOnClickListener(v -> press(k[1]));
-                r.addView(t);
-            }
-        }
-        LinearLayout fkeys = scrollRow();
-        for (int f = 1; f <= 12; f++) {
-            String name = "f" + f;
-            TextView t = key("F" + f, 0f);
-            t.setOnClickListener(v -> press(name));
-            fkeys.addView(t);
-        }
-        section(R.string.combos);
-        LinearLayout combos = scrollRow();
-        for (String[] c : COMBOS) {
-            TextView t = key(c[0], 0f);
-            t.setOnClickListener(v -> send(c[1]));
-            combos.addView(t);
-        }
+        comboButton.setOnClickListener(v -> toggleCombo());
+        buildKeyboard(findViewById(R.id.keys));
     }
 
     @Override
@@ -129,41 +120,111 @@ public class KeyboardActivity extends AppCompatActivity {
         session.setCompoundDrawablesRelativeWithIntrinsicBounds(open ? R.drawable.dot_live : 0, 0, 0, 0);
     }
 
-    private void openSession() {
-        Session.open(this, (ok, err) -> {
-            if (!ok) say(err);
-            render();
-        });
-    }
+    // ---- keyboard ----
 
-    private void toggle(String mod) {
-        if (!held.remove(mod)) held.add(mod);
-        refreshMods();
-    }
-
-    private void refreshMods() {
-        for (java.util.Map.Entry<String, TextView> e : modViews.entrySet()) {
-            boolean on = held.contains(e.getKey());
-            e.getValue().setBackgroundResource(on ? R.drawable.bg_key_on : R.drawable.bg_secondary);
-            e.getValue().setTextColor(getColor(on ? R.color.on_ink : R.color.text1));
+    private void buildKeyboard(LinearLayout root) {
+        boolean landscape = getResources().getConfiguration().orientation == Configuration.ORIENTATION_LANDSCAPE;
+        int h = dp(landscape ? 40 : 46), gap = dp(3);
+        for (int r = 0; r < ROWS.length; r++) {
+            LinearLayout row = new LinearLayout(this);
+            row.setOrientation(LinearLayout.HORIZONTAL);
+            LinearLayout.LayoutParams rlp = new LinearLayout.LayoutParams(-1, r == 0 ? dp(landscape ? 30 : 36) : h);
+            rlp.bottomMargin = gap;
+            for (Object[] k : ROWS[r]) {
+                String label = (String) k[0], name = (String) k[1];
+                TextView t = new TextView(this, null, 0, R.style.Text);
+                t.setText(label);
+                t.setGravity(Gravity.CENTER);
+                t.setTextSize(r == 0 || label.length() > 2 ? 11 : 15);
+                t.setMaxLines(1);
+                t.setBackgroundResource(R.drawable.bg_key);
+                t.setContentDescription(name);
+                LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, -1, ((Double) k[2]).floatValue());
+                lp.setMarginEnd(gap);
+                t.setOnClickListener(v -> tap(name));
+                views.computeIfAbsent(name, x -> new ArrayList<>()).add(t);
+                row.addView(t, lp);
+            }
+            root.addView(row, rlp);
         }
     }
 
-    /** A key with whatever modifiers are held; modifiers release after one use. */
-    private void press(String keyName) {
-        StringBuilder combo = new StringBuilder();
-        for (String m : held) combo.append(m).append('+');
-        combo.append(keyName);
-        send(combo.toString());
-        if (!held.isEmpty()) {
-            held.clear();
-            refreshMods();
+    private static boolean isModifier(String name) {
+        return MOD_LABEL.containsKey(name);
+    }
+
+    private void tap(String name) {
+        comboButton.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP);
+        if (comboMode) {
+            if (!combo.remove(name)) combo.add(name);
+            refresh();
+            return;
+        }
+        if (isModifier(name)) {
+            if (!latched.remove(name)) latched.add(name);
+            refresh();
+            return;
+        }
+        StringBuilder c = new StringBuilder();
+        for (String m : latched) c.append(m).append('+');
+        send(c.append(name).toString());
+        latched.clear();
+        refresh();
+    }
+
+    private void toggleCombo() {
+        if (comboMode && !combo.isEmpty()) sendCombo();
+        comboMode = !comboMode;
+        combo.clear();
+        latched.clear();
+        refresh();
+    }
+
+    /** Modifiers first, then the last normal key (or a lone modifier like Super). */
+    private void sendCombo() {
+        List<String> mods = new ArrayList<>();
+        String key = null;
+        for (String k : combo) {
+            if (isModifier(k)) mods.add(k);
+            else key = k;
+        }
+        if (key == null && !mods.isEmpty()) key = mods.remove(mods.size() - 1);
+        if (key == null) return;
+        StringBuilder c = new StringBuilder();
+        for (String m : mods) c.append(m).append('+');
+        send(c.append(key).toString());
+    }
+
+    private void refresh() {
+        Set<String> on = new LinkedHashSet<>(comboMode ? combo : latched);
+        for (Map.Entry<String, List<TextView>> e : views.entrySet()) {
+            boolean lit = on.contains(e.getKey());
+            for (TextView t : e.getValue()) {
+                t.setBackgroundResource(lit ? R.drawable.bg_key_on : R.drawable.bg_key);
+                t.setTextColor(getColor(lit ? R.color.on_ink : R.color.text1));
+            }
+        }
+        comboButton.setBackgroundResource(comboMode ? R.drawable.bg_key_on : R.drawable.bg_key);
+        comboButton.setTextColor(getColor(comboMode ? R.color.on_ink : R.color.text1));
+        if (comboMode) {
+            StringBuilder p = new StringBuilder();
+            for (String k : combo) {
+                if (p.length() > 0) p.append(" + ");
+                p.append(MOD_LABEL.getOrDefault(k, label(k)));
+            }
+            comboPreview.setText(p.length() == 0 ? getString(R.string.combo_hint) : p);
+        } else {
+            comboPreview.setText("");
         }
     }
 
-    private void send(String combo) {
-        keys.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP);
-        deck.send("key", json("combo", combo), (ok, err, data) -> {
+    private String label(String name) {
+        List<TextView> v = views.get(name);
+        return v == null || v.isEmpty() ? name : v.get(0).getText().toString();
+    }
+
+    private void send(String c) {
+        deck.send("key", json("combo", c), (ok, err, data) -> {
             if (!ok) {
                 say(err);
                 if (Session.isSessionError(err)) deck.sessionUntil = 0;
@@ -175,67 +236,14 @@ public class KeyboardActivity extends AppCompatActivity {
     private void typeText() {
         String t = text.getText().toString();
         if (t.isEmpty()) return;
-        if (!held.isEmpty() && t.length() == 1) {
-            // a single character with modifiers held is a shortcut, e.g. Strg + c
-            press(t.toLowerCase(java.util.Locale.ROOT));
-            text.setText("");
-            return;
-        }
         deck.send("type", json("text", t), (ok, err, data) -> {
             if (ok) {
                 text.setText("");
-                say(getString(R.string.sent));
+                say(null);
             } else {
                 say(err);
             }
         });
-    }
-
-    // ---- view helpers ----
-
-    private void section(int label) {
-        TextView t = new TextView(this, null, 0, R.style.Text_Small);
-        t.setText(label);
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, -2);
-        lp.topMargin = dp(24);
-        lp.bottomMargin = dp(8);
-        keys.addView(t, lp);
-    }
-
-    private LinearLayout row() {
-        LinearLayout r = new LinearLayout(this);
-        r.setOrientation(LinearLayout.HORIZONTAL);
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, -2);
-        lp.bottomMargin = dp(8);
-        keys.addView(r, lp);
-        return r;
-    }
-
-    private LinearLayout scrollRow() {
-        HorizontalScrollView sv = new HorizontalScrollView(this);
-        sv.setHorizontalScrollBarEnabled(false);
-        LinearLayout r = new LinearLayout(this);
-        r.setOrientation(LinearLayout.HORIZONTAL);
-        sv.addView(r);
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, -2);
-        lp.bottomMargin = dp(8);
-        keys.addView(sv, lp);
-        return r;
-    }
-
-    private TextView key(String label, float weight) {
-        TextView t = new TextView(this, null, 0, R.style.Text);
-        t.setText(label);
-        t.setGravity(Gravity.CENTER);
-        t.setTextSize(14);
-        t.setBackgroundResource(R.drawable.bg_secondary);
-        t.setMinWidth(weight == 0 ? dp(64) : 0);
-        t.setPadding(dp(12), 0, dp(12), 0);
-        t.setStateListAnimator(android.animation.AnimatorInflater.loadStateListAnimator(this, R.animator.press));
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(weight == 0 ? -2 : 0, dp(44), weight);
-        lp.setMarginEnd(dp(6));
-        t.setLayoutParams(lp);
-        return t;
     }
 
     private String json(String k, String v) {
