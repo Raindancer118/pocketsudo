@@ -49,13 +49,17 @@ type Agent struct {
 	batteryDir  string
 	hostname    string
 	downloadDir string
-	home        string // the file browser never leaves this directory
+	home        string   // the file browser never leaves this directory
+	dataDirs    []string // XDG data dirs: applications, icons, pixmaps
+	iconCache   string
 
 	mu           sync.Mutex
 	sessionUntil time.Time
 	lastClip     string // last text that came from the phone, so it is not echoed back
 	stream       *streamer
 	iceServers   []webrtc.ICEServer
+	iconIdx      *iconIndex
+	iconIdxAt    time.Time
 }
 
 func NewAgent(cfg *Config, sys System, log *slog.Logger) (*Agent, error) {
@@ -77,7 +81,8 @@ func NewAgent(cfg *Config, sys System, log *slog.Logger) (*Agent, error) {
 	hn, _ := os.Hostname()
 	return &Agent{cfg: cfg, sys: sys, log: log, key: key, phonePub: pub,
 		client: host.NewClient(cfg.Relay, cfg.HostToken), guard: protocol.NewReplayGuard(),
-		batteryDir: "/sys/class/power_supply", hostname: hn, downloadDir: defaultDownloadDir(), home: homeDir(), iceServers: defaultICE()}, nil
+		batteryDir: "/sys/class/power_supply", hostname: hn, downloadDir: defaultDownloadDir(), home: homeDir(), iceServers: defaultICE(),
+		dataDirs: defaultDataDirs(), iconCache: defaultIconCache()}, nil
 }
 
 // Run long-polls the host inbox until ctx ends.
@@ -296,7 +301,7 @@ func SelfTest(ctx context.Context, sys System, print func(any)) error {
 	var st State
 	json.Unmarshal(data, &st)
 	print(st)
-	apps := installedApps()
+	apps := installedApps(defaultDataDirs())
 	print(map[string]int{"installed_apps": len(apps)})
 	return nil
 }

@@ -40,6 +40,7 @@ func init() {
 		"media":          {fn: (*Agent).media},
 		"workspace":      {fn: (*Agent).workspace},
 		"apps.list":      {fn: (*Agent).appsList},
+		"apps.icons":     {fn: (*Agent).appsIcons},
 		"app.launch":     {fn: (*Agent).appLaunch},
 		"open.url":       {fn: (*Agent).openURL},
 		"clipboard.get":  {fn: (*Agent).clipboardGet},
@@ -276,30 +277,31 @@ func (a *Agent) workspace(ctx context.Context, body json.RawMessage) (json.RawMe
 type App struct {
 	ID   string `json:"id"`
 	Name string `json:"name"`
+	Icon string `json:"-"` // Icon= of the desktop entry: a theme name or an absolute path
 }
 
-func desktopDirs() []string {
+func defaultDataDirs() []string {
 	dirs := []string{}
 	if d, err := os.UserHomeDir(); err == nil {
-		dirs = append(dirs, filepath.Join(d, ".local/share/applications"))
+		dirs = append(dirs, filepath.Join(d, ".local/share"), filepath.Join(d, ".local/share/flatpak/exports/share"))
 	}
-	return append(dirs, "/usr/share/applications", "/var/lib/flatpak/exports/share/applications")
+	return append(dirs, "/usr/share", "/var/lib/flatpak/exports/share")
 }
 
-func installedApps() []App {
+func installedApps(dataDirs []string) []App {
 	seen := map[string]bool{}
 	var apps []App
-	for _, dir := range desktopDirs() {
-		files, _ := filepath.Glob(filepath.Join(dir, "*.desktop"))
+	for _, base := range dataDirs {
+		files, _ := filepath.Glob(filepath.Join(base, "applications", "*.desktop"))
 		for _, f := range files {
 			id := strings.TrimSuffix(filepath.Base(f), ".desktop")
 			if seen[id] {
 				continue
 			}
 			seen[id] = true
-			name, hidden := readDesktop(f)
+			name, icon, hidden := readDesktop(f)
 			if !hidden && name != "" {
-				apps = append(apps, App{ID: id, Name: name})
+				apps = append(apps, App{ID: id, Name: name, Icon: icon})
 			}
 		}
 	}
@@ -307,10 +309,10 @@ func installedApps() []App {
 	return apps
 }
 
-func readDesktop(path string) (name string, hidden bool) {
+func readDesktop(path string) (name, icon string, hidden bool) {
 	f, err := os.Open(path)
 	if err != nil {
-		return "", true
+		return "", "", true
 	}
 	defer f.Close()
 	sc := bufio.NewScanner(f)
@@ -327,17 +329,19 @@ func readDesktop(path string) (name string, hidden bool) {
 		switch {
 		case strings.HasPrefix(l, "Name=") && name == "":
 			name = strings.TrimPrefix(l, "Name=")
+		case strings.HasPrefix(l, "Icon=") && icon == "":
+			icon = strings.TrimPrefix(l, "Icon=")
 		case l == "NoDisplay=true", l == "Hidden=true":
 			hidden = true
 		case strings.HasPrefix(l, "Type=") && l != "Type=Application":
 			hidden = true
 		}
 	}
-	return name, hidden
+	return name, icon, hidden
 }
 
 func (a *Agent) appsList(_ context.Context, _ json.RawMessage) (json.RawMessage, error) {
-	return ok(installedApps())
+	return ok(installedApps(a.dataDirs))
 }
 
 func (a *Agent) appLaunch(ctx context.Context, body json.RawMessage) (json.RawMessage, error) {
@@ -346,7 +350,7 @@ func (a *Agent) appLaunch(ctx context.Context, body json.RawMessage) (json.RawMe
 		return nil, err
 	}
 	// only installed desktop entries: the phone can't smuggle in a command line here
-	for _, app := range installedApps() {
+	for _, app := range installedApps(a.dataDirs) {
 		if app.ID == p.ID {
 			return nil, a.sys.Start(ctx, "gtk-launch", app.ID)
 		}
