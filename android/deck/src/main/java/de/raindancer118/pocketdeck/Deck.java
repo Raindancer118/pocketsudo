@@ -51,6 +51,8 @@ final class Deck {
     private volatile boolean polling;
     /** Remote-control session (keyboard, screen), as granted by the agent. */
     volatile long sessionUntil;
+    /** Asked for the session finger once in this app process (cancel = don't nag). */
+    volatile boolean askedSession;
     private volatile Thread poller;
     private byte[] key;
 

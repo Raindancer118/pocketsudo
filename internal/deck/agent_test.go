@@ -520,3 +520,19 @@ func TestChainContinuesPastFailingStep(t *testing.T) {
 		t.Fatal("chain stopped at the failing step")
 	}
 }
+
+func TestSessionStatus(t *testing.T) {
+	r := newRig(t)
+	var st struct{ Until int64 }
+	res := result(t, r.send("session.status", nil, false))
+	json.Unmarshal(res.Data, &st)
+	if !res.OK || st.Until != 0 {
+		t.Fatalf("closed session reported as %+v", res)
+	}
+	result(t, r.send("session.open", nil, true))
+	res = result(t, r.send("session.status", nil, false))
+	json.Unmarshal(res.Data, &st)
+	if st.Until < time.Now().Unix() {
+		t.Fatalf("open session not reported: %+v", res)
+	}
+}

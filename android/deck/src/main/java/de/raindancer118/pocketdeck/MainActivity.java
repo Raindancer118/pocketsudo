@@ -167,6 +167,7 @@ public class MainActivity extends AppCompatActivity {
         renderShortcuts();
         deck.startPolling();
         main.post(refresher);
+        Session.ensure(this);
     }
 
     @Override

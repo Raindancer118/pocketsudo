@@ -45,6 +45,7 @@ func init() {
 		"command":        {auth: true, fn: (*Agent).command},
 		"session.open":   {auth: true, fn: (*Agent).sessionOpen},
 		"session.close":  {fn: (*Agent).sessionClose},
+		"session.status": {fn: (*Agent).sessionStatus},
 		"key":            {session: true, fn: (*Agent).pressKey},
 		"type":           {session: true, fn: (*Agent).typeText},
 		"screenshot":     {session: true, fn: (*Agent).screenshot},
@@ -435,6 +436,17 @@ func (a *Agent) sessionClose(_ context.Context, _ json.RawMessage) (json.RawMess
 	a.sessionUntil = time.Time{}
 	a.mu.Unlock()
 	return nil, nil
+}
+
+// sessionStatus tells the phone whether it still has to ask for the finger.
+func (a *Agent) sessionStatus(_ context.Context, _ json.RawMessage) (json.RawMessage, error) {
+	a.mu.Lock()
+	until := a.sessionUntil
+	a.mu.Unlock()
+	if time.Now().After(until) {
+		return ok(map[string]int64{"until": 0})
+	}
+	return ok(map[string]int64{"until": until.Unix()})
 }
 
 func (a *Agent) sessionActive() bool {

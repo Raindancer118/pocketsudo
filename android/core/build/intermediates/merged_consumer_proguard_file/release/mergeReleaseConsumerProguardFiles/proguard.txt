@@ -1,1 +1,0 @@
--keep class de.raindancer118.pocketcore.** { *; }
