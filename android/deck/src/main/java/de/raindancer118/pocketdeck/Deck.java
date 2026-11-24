@@ -48,6 +48,8 @@ final class Deck {
     private final Map<String, Callback> pending = new ConcurrentHashMap<>();
     private final Set<String> seen = new HashSet<>();
     private volatile boolean polling;
+    /** Remote-control session (keyboard, screen), as granted by the agent. */
+    volatile long sessionUntil;
     private volatile Thread poller;
     private byte[] key;
 

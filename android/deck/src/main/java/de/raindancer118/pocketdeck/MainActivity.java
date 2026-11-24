@@ -125,6 +125,7 @@ public class MainActivity extends AppCompatActivity {
         row(R.id.clip_get, R.drawable.ic_clip, this::clipGet);
         row(R.id.clip_send, R.drawable.ic_clip, this::clipSend);
         row(R.id.open_link, R.drawable.ic_link, this::openLink);
+        row(R.id.keyboard, R.drawable.ic_keyboard, () -> startActivity(new Intent(this, KeyboardActivity.class)));
     }
 
     @Override

@@ -273,3 +273,35 @@ func mustParse(t *testing.T, uri string) pairURI {
 }
 
 func itoa(n int64) string { return strconv.FormatInt(n, 10) }
+
+func TestKeyboardNeedsSession(t *testing.T) {
+	r := newRig(t)
+	if res := result(t, r.send("key", map[string]string{"combo": "ctrl+alt+t"}, false)); res.OK || r.sys.ran("wtype") {
+		t.Fatalf("key without a session: %+v", res)
+	}
+	if res := result(t, r.send("session.open", nil, false)); res.OK {
+		t.Fatal("session opened without fingerprint")
+	}
+	if res := result(t, r.send("session.open", nil, true)); !res.OK {
+		t.Fatalf("signed session.open failed: %+v", res)
+	}
+	if res := result(t, r.send("key", map[string]string{"combo": "ctrl+alt+t"}, false)); !res.OK ||
+		!r.sys.ran("wtype -M ctrl -M alt -k t -m alt -m ctrl") {
+		t.Fatalf("combo: %+v %v", res, r.sys.calls)
+	}
+	if res := result(t, r.send("key", map[string]string{"combo": "super"}, false)); !res.OK || !r.sys.ran("wtype -k Super_L") {
+		t.Fatalf("super: %+v %v", res, r.sys.calls)
+	}
+	if res := result(t, r.send("type", map[string]string{"text": "ls -la /tmp ü"}, false)); !res.OK || !r.sys.ran("wtype -- ls -la /tmp ü") {
+		t.Fatalf("type: %+v", res)
+	}
+	if res := result(t, r.send("key", map[string]string{"combo": "ctrl+rm -rf"}, false)); res.OK {
+		t.Fatal("accepted a garbage key name")
+	}
+	if res := result(t, r.send("session.close", nil, false)); !res.OK {
+		t.Fatal("close failed")
+	}
+	if res := result(t, r.send("key", map[string]string{"combo": "a"}, false)); res.OK {
+		t.Fatal("key after session.close")
+	}
+}

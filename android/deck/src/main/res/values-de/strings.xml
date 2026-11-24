@@ -45,4 +45,17 @@
     <string name="pair_wrong_host">Schlüssel des Computers passt nicht zum Code, abgebrochen</string>
     <string name="pair_used">Code schon verwendet, pair am Computer neu starten</string>
     <string name="done">Fertig</string>
+    <string name="keyboard">Tastatur</string>
+    <string name="back">Zurück</string>
+    <string name="session_open">Fernsteuerung öffnen</string>
+    <string name="session_open_hint">Ein Fingerabdruck öffnet die Tastatursteuerung für 15 Minuten</string>
+    <string name="session_left">noch %1$d min</string>
+    <string name="bio_session">Fernsteuerung für %1$s</string>
+    <string name="type_hint">Text eingeben …</string>
+    <string name="type_send">Tippen</string>
+    <string name="modifiers">Gedrückt halten</string>
+    <string name="keys">Tasten</string>
+    <string name="combos">Kombinationen</string>
+    <string name="sent">Gesendet</string>
+    <string name="open_keyboard">Tastatur</string>
 </resources>

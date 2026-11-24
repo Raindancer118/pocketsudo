@@ -658,6 +658,7 @@ drawable bg_circle
 drawable bg_cover
 drawable bg_danger
 drawable bg_dialog
+drawable bg_key_on
 drawable bg_link
 drawable bg_primary
 drawable bg_secondary
@@ -709,6 +710,7 @@ drawable ic_clip
 drawable ic_fingerprint
 drawable ic_fp_big
 drawable ic_home
+drawable ic_keyboard
 drawable ic_launcher_fg
 drawable ic_launcher_mono
 drawable ic_link
@@ -813,6 +815,7 @@ id always
 id artist
 id async
 id auto
+id back
 id beginning
 id blocking
 id body
@@ -827,6 +830,7 @@ id checked
 id chronometer
 id clip_get
 id clip_send
+id closed
 id code
 id collapseActionView
 id content
@@ -865,6 +869,8 @@ id ifRoom
 id image
 id info
 id italic
+id keyboard
+id keys
 id light
 id line1
 id line3
@@ -884,7 +890,9 @@ id notification_main_column
 id notification_main_column_container
 id off
 id on
+id open
 id open_link
+id opened
 id pair_cmd
 id parentPanel
 id play
@@ -913,6 +921,8 @@ id search_plate
 id search_src_text
 id search_voice_btn
 id select_dialog_listview
+id send
+id session
 id shortcut
 id showCustom
 id showHome
@@ -1020,6 +1030,7 @@ layout abc_search_dropdown_item_icons_2line
 layout abc_search_view
 layout abc_select_dialog_material
 layout abc_tooltip
+layout activity_keyboard
 layout activity_main
 layout activity_pair
 layout custom_dialog
@@ -1071,7 +1082,9 @@ string abc_shareactionprovider_share_with_application
 string abc_toolbar_collapse_description
 string androidx_startup
 string app_name
+string back
 string battery
+string bio_session
 string bio_unlock
 string brightness
 string call_notification_answer_action
@@ -1088,6 +1101,7 @@ string clip_get
 string clip_got
 string clip_send
 string clip_sent
+string combos
 string common_google_play_services_enable_button
 string common_google_play_services_enable_text
 string common_google_play_services_enable_title
@@ -1121,10 +1135,13 @@ string generic_error_no_device_credential
 string generic_error_no_keyguard
 string generic_error_user_canceled
 string key_invalid
+string keyboard
+string keys
 string link_opened
 string lock
 string locked
 string locked_done
+string modifiers
 string next
 string no_answer
 string no_biometric
@@ -1134,6 +1151,7 @@ string not_paired
 string nothing_playing
 string offline
 string on_computer
+string open_keyboard
 string open_link
 string pair_compare
 string pair_confirm_there
@@ -1149,10 +1167,16 @@ string playing_on
 string previous
 string scan
 string search_menu_title
+string sent
+string session_left
+string session_open
+string session_open_hint
 string status_bar_notification_info_overflow
 string tab_remote
 string tab_start
 string theme_toggle
+string type_hint
+string type_send
 string unlock
 string unlocked
 string unlocked_done

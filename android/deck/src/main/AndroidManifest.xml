@@ -37,6 +37,11 @@
             </intent-filter>
         </activity>
 
+        <activity
+            android:name=".KeyboardActivity"
+            android:exported="false"
+            android:windowSoftInputMode="adjustResize" />
+
         <meta-data
             android:name="firebase_messaging_auto_init_enabled"
             android:value="false" />

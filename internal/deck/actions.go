@@ -12,11 +12,13 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 )
 
 type action struct {
-	auth bool // needs the phone's biometric signature
-	fn   func(a *Agent, ctx context.Context, body json.RawMessage) (json.RawMessage, error)
+	auth    bool // needs the phone's biometric signature on this very message
+	session bool // needs a remote session opened with the fingerprint (or auth)
+	fn      func(a *Agent, ctx context.Context, body json.RawMessage) (json.RawMessage, error)
 }
 
 var actions map[string]action
@@ -38,6 +40,10 @@ func init() {
 		"clipboard.set":  {fn: (*Agent).clipboardSet},
 		"dnd":            {fn: (*Agent).dnd},
 		"command":        {auth: true, fn: (*Agent).command},
+		"session.open":   {auth: true, fn: (*Agent).sessionOpen},
+		"session.close":  {fn: (*Agent).sessionClose},
+		"key":            {session: true, fn: (*Agent).pressKey},
+		"type":           {session: true, fn: (*Agent).typeText},
 	}
 }
 
@@ -399,4 +405,111 @@ func (a *Agent) command(ctx context.Context, body json.RawMessage) (json.RawMess
 		return ok(map[string]string{"output": out, "error": err.Error()})
 	}
 	return ok(map[string]string{"output": out})
+}
+
+// ---- remote session, keyboard ----
+
+// SessionTTL is how long one fingerprint unlocks keyboard and screen control.
+const SessionTTL = 15 * time.Minute
+
+func (a *Agent) sessionOpen(_ context.Context, _ json.RawMessage) (json.RawMessage, error) {
+	a.mu.Lock()
+	a.sessionUntil = time.Now().Add(SessionTTL)
+	until := a.sessionUntil
+	a.mu.Unlock()
+	return ok(map[string]int64{"until": until.Unix()})
+}
+
+func (a *Agent) sessionClose(_ context.Context, _ json.RawMessage) (json.RawMessage, error) {
+	a.mu.Lock()
+	a.sessionUntil = time.Time{}
+	a.mu.Unlock()
+	return nil, nil
+}
+
+func (a *Agent) sessionActive() bool {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	return time.Now().Before(a.sessionUntil)
+}
+
+var modifiers = map[string]string{"ctrl": "ctrl", "control": "ctrl", "strg": "ctrl", "alt": "alt",
+	"shift": "shift", "super": "logo", "win": "logo", "meta": "logo", "logo": "logo", "altgr": "altgr"}
+
+var namedKeys = map[string]string{"enter": "Return", "return": "Return", "esc": "Escape", "escape": "Escape",
+	"tab": "Tab", "backspace": "BackSpace", "delete": "Delete", "del": "Delete", "entf": "Delete", "space": "space",
+	"up": "Up", "down": "Down", "left": "Left", "right": "Right", "home": "Home", "end": "End",
+	"pageup": "Prior", "pagedown": "Next", "print": "Print", "insert": "Insert", "menu": "Menu",
+	"volumeup": "XF86AudioRaiseVolume", "volumedown": "XF86AudioLowerVolume", "mute": "XF86AudioMute"}
+
+func keysym(name string) (string, bool) {
+	n := strings.ToLower(name)
+	if k, ok := namedKeys[n]; ok {
+		return k, true
+	}
+	if len(n) == 1 && ((n[0] >= 'a' && n[0] <= 'z') || (n[0] >= '0' && n[0] <= '9')) {
+		return n, true
+	}
+	if len(n) >= 2 && len(n) <= 3 && n[0] == 'f' {
+		if f, err := strconv.Atoi(n[1:]); err == nil && f >= 1 && f <= 24 {
+			return "F" + n[1:], true
+		}
+	}
+	return "", false
+}
+
+// pressKey presses a combination like "ctrl+alt+t" or a single key ("super", "f5").
+func (a *Agent) pressKey(ctx context.Context, body json.RawMessage) (json.RawMessage, error) {
+	var p struct{ Combo string }
+	if err := decode(body, &p); err != nil {
+		return nil, err
+	}
+	parts := strings.Split(strings.ReplaceAll(p.Combo, " ", ""), "+")
+	var mods []string
+	key := ""
+	for i, part := range parts {
+		last := i == len(parts)-1
+		if m, ok := modifiers[strings.ToLower(part)]; ok && !(last && len(parts) == 1) {
+			if last {
+				return nil, fmt.Errorf("combo %q ends with a modifier", p.Combo)
+			}
+			mods = append(mods, m)
+			continue
+		}
+		if !last {
+			return nil, fmt.Errorf("unknown modifier %q", part)
+		}
+		if m, ok := modifiers[strings.ToLower(part)]; ok && len(parts) == 1 {
+			// a modifier on its own, e.g. Super to open the launcher
+			key = map[string]string{"logo": "Super_L", "ctrl": "Control_L", "alt": "Alt_L", "shift": "Shift_L", "altgr": "ISO_Level3_Shift"}[m]
+			continue
+		}
+		k, ok := keysym(part)
+		if !ok {
+			return nil, fmt.Errorf("unknown key %q", part)
+		}
+		key = k
+	}
+	args := []string{}
+	for _, m := range mods {
+		args = append(args, "-M", m)
+	}
+	args = append(args, "-k", key)
+	for i := len(mods) - 1; i >= 0; i-- {
+		args = append(args, "-m", mods[i])
+	}
+	_, err := a.sys.Run(ctx, "wtype", args...)
+	return nil, err
+}
+
+func (a *Agent) typeText(ctx context.Context, body json.RawMessage) (json.RawMessage, error) {
+	var p struct{ Text string }
+	if err := decode(body, &p); err != nil {
+		return nil, err
+	}
+	if p.Text == "" || len(p.Text) > 4000 {
+		return nil, errors.New("text must be 1–4000 characters")
+	}
+	_, err := a.sys.Run(ctx, "wtype", "--", p.Text)
+	return nil, err
 }

@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"sync"
 	"time"
 
 	"github.com/Raindancer118/pocketsudo/internal/host"
@@ -37,6 +38,9 @@ type Agent struct {
 	guard      *protocol.ReplayGuard
 	batteryDir string
 	hostname   string
+
+	mu           sync.Mutex
+	sessionUntil time.Time
 }
 
 func NewAgent(cfg *Config, sys System, log *slog.Logger) (*Agent, error) {
@@ -133,7 +137,10 @@ func (a *Agent) reply(ctx context.Context, ref, typ string, body any) {
 	}
 }
 
-var errNeedsFinger = errors.New("needs your fingerprint")
+var (
+	errNeedsFinger  = errors.New("needs your fingerprint")
+	errNeedsSession = errors.New("open remote control with your fingerprint first")
+)
 
 func (a *Agent) dispatch(ctx context.Context, m protocol.DeckMessage) (json.RawMessage, error) {
 	authed := protocol.VerifyDeckAuth(a.phonePub, m)
@@ -150,6 +157,9 @@ func (a *Agent) dispatch(ctx context.Context, m protocol.DeckMessage) (json.RawM
 	}
 	if act.auth && !authed {
 		return nil, errNeedsFinger
+	}
+	if act.session && !authed && !a.sessionActive() {
+		return nil, errNeedsSession
 	}
 	return act.fn(a, ctx, m.Body)
 }
@@ -177,6 +187,9 @@ func (a *Agent) runChain(ctx context.Context, ch Chain, authed bool) error {
 		}
 		if act.auth && !authed {
 			return fmt.Errorf("step %d (%s): %w", i+1, s.Type, errNeedsFinger)
+		}
+		if act.session && !authed && !a.sessionActive() {
+			return fmt.Errorf("step %d (%s): %w", i+1, s.Type, errNeedsSession)
 		}
 	}
 	for i, s := range ch.Steps {

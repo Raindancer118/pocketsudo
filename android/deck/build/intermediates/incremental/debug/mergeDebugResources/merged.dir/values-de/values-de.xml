@@ -27,6 +27,8 @@
     <string msgid="8875138169939072951" name="abc_shareactionprovider_share_with">"Teilen mit"</string>
     <string msgid="9055268688411532828" name="abc_shareactionprovider_share_with_application">"Mit <ns1:g id="APPLICATION_NAME">%s</ns1:g> teilen"</string>
     <string msgid="1656852541809559762" name="abc_toolbar_collapse_description">"Minimieren"</string>
+    <string name="back">Zurück</string>
+    <string name="bio_session">Fernsteuerung für %1$s</string>
     <string name="bio_unlock">%1$s entsperren</string>
     <string name="brightness">Helligkeit  %1$d %%</string>
     <string msgid="881409763997275156" name="call_notification_answer_action">"Annehmen"</string>
@@ -43,6 +45,7 @@
     <string name="clip_got">Zwischenablage aufs Handy kopiert</string>
     <string name="clip_send">Zwischenablage senden</string>
     <string name="clip_sent">Zwischenablage gesendet</string>
+    <string name="combos">Kombinationen</string>
     <string msgid="2523291102206661146" name="common_google_play_services_enable_button">Aktivieren</string>
     <string msgid="227660514972886228" name="common_google_play_services_enable_text">%1$s funktioniert erst nach der Aktivierung der Google Play-Dienste.</string>
     <string msgid="5122002158466380389" name="common_google_play_services_enable_title">Google Play-Dienste aktivieren</string>
@@ -75,10 +78,13 @@
     <string msgid="1807436368654974044" name="generic_error_no_keyguard">"Dieses Gerät kann nicht mit einer PIN, einem Muster oder einem Passwort gesperrt bzw. entsperrt werden."</string>
     <string msgid="7309881387583143581" name="generic_error_user_canceled">"Authentifizierung vom Nutzer abgebrochen."</string>
     <string name="key_invalid">Fingerabdrücke geändert – neu koppeln</string>
+    <string name="keyboard">Tastatur</string>
+    <string name="keys">Tasten</string>
     <string name="link_opened">Link geöffnet</string>
     <string name="lock">Sperren</string>
     <string name="locked">Gesperrt</string>
     <string name="locked_done">Gesperrt</string>
+    <string name="modifiers">Gedrückt halten</string>
     <string name="next">Weiter</string>
     <string name="no_answer">Keine Antwort – läuft pocketdeck auf dem Computer?</string>
     <string name="no_biometric">Richte zuerst einen Fingerabdruck auf diesem Handy ein</string>
@@ -88,6 +94,7 @@
     <string name="nothing_playing">Es läuft nichts</string>
     <string name="offline">Nicht erreichbar</string>
     <string name="on_computer">Auf dem Computer</string>
+    <string name="open_keyboard">Tastatur</string>
     <string name="open_link">Link aus der Zwischenablage öffnen</string>
     <string name="pair_compare">Steht derselbe Code im Terminal?</string>
     <string name="pair_confirm_there">Dort mit y bestätigen</string>
@@ -103,10 +110,16 @@
     <string name="previous">Zurück</string>
     <string name="scan">Code scannen</string>
     <string msgid="6264217191555673260" name="search_menu_title">"Suche"</string>
+    <string name="sent">Gesendet</string>
+    <string name="session_left">noch %1$d min</string>
+    <string name="session_open">Fernsteuerung öffnen</string>
+    <string name="session_open_hint">Ein Fingerabdruck öffnet die Tastatursteuerung für 15 Minuten</string>
     <string msgid="6277540029070332960" name="status_bar_notification_info_overflow">"999+"</string>
     <string name="tab_remote">Fernbedienung</string>
     <string name="tab_start">Start</string>
     <string name="theme_toggle">Hell und dunkel wechseln</string>
+    <string name="type_hint">Text eingeben …</string>
+    <string name="type_send">Tippen</string>
     <string name="unlock">Entsperren</string>
     <string name="unlocked">Entsperrt</string>
     <string name="unlocked_done">Entsperrt</string>

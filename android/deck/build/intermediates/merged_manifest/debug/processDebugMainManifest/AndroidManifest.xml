@@ -61,6 +61,10 @@
                     android:scheme="pocketdeck" />
             </intent-filter>
         </activity>
+        <activity
+            android:name="de.raindancer118.pocketdeck.KeyboardActivity"
+            android:exported="false"
+            android:windowSoftInputMode="adjustResize" />
 
         <meta-data
             android:name="firebase_messaging_auto_init_enabled"

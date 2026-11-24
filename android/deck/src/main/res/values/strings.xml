@@ -47,4 +47,17 @@
     <string name="pair_wrong_host">The computer\'s key doesn\'t match the code, aborted</string>
     <string name="pair_used">Code already used, start pair again on the computer</string>
     <string name="done">Done</string>
+    <string name="keyboard">Keyboard</string>
+    <string name="back">Back</string>
+    <string name="session_open">Open remote control</string>
+    <string name="session_open_hint">One fingerprint opens keyboard control for 15 minutes</string>
+    <string name="session_left">%1$d min</string>
+    <string name="bio_session">Remote control for %1$s</string>
+    <string name="type_hint">Type text …</string>
+    <string name="type_send">Type</string>
+    <string name="modifiers">Hold</string>
+    <string name="keys">Keys</string>
+    <string name="combos">Shortcuts</string>
+    <string name="sent">Sent</string>
+    <string name="open_keyboard">Keyboard</string>
 </resources>
