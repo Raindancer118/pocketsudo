@@ -58,6 +58,7 @@ type Agent struct {
 	lastClip     string // last text that came from the phone, so it is not echoed back
 	stream       *streamer
 	iceServers   []webrtc.ICEServer
+	maxSend      int64  // largest file "pocketdeck send" pushes (the relay's file limit)
 	velaShell    string // vela's quickshell dir: DND and night light go through it
 	velaState    string // its state file; "" = find the newest
 	iconIdx      *iconIndex
@@ -84,7 +85,7 @@ func NewAgent(cfg *Config, sys System, log *slog.Logger) (*Agent, error) {
 	return &Agent{cfg: cfg, sys: sys, log: log, key: key, phonePub: pub,
 		client: host.NewClient(cfg.Relay, cfg.HostToken), guard: protocol.NewReplayGuard(),
 		batteryDir: "/sys/class/power_supply", hostname: hn, downloadDir: defaultDownloadDir(), home: homeDir(), iceServers: defaultICE(),
-		dataDirs: defaultDataDirs(), iconCache: defaultIconCache(), velaShell: defaultVelaShell()}, nil
+		dataDirs: defaultDataDirs(), iconCache: defaultIconCache(), velaShell: defaultVelaShell(), maxSend: maxDownload}, nil
 }
 
 // Run long-polls the host inbox until ctx ends.
@@ -195,14 +196,19 @@ func (a *Agent) watchClipboard(ctx context.Context) {
 
 // notify sends an unsolicited event to the phone and wakes it via push.
 func (a *Agent) notify(ctx context.Context, typ string, body any) {
+	if err := a.notifyErr(ctx, typ, body); err != nil {
+		a.log.Warn("notify", "type", typ, "err", err)
+	}
+}
+
+func (a *Agent) notifyErr(ctx context.Context, typ string, body any) error {
 	b, _ := json.Marshal(body)
 	box, err := protocol.SealMessage(a.key, protocol.DeckMessage{ID: protocol.RandomID(16), Type: typ, Body: b}, time.Now())
 	if err != nil {
-		return
+		return err
 	}
-	if _, err := a.client.Do(ctx, "POST", "/v1/channels/"+a.cfg.Channel+"/inbox/phone", protocol.InboxPost{Box: box, Push: true}, nil); err != nil {
-		a.log.Warn("notify", "type", typ, "err", err)
-	}
+	_, err = a.client.Do(ctx, "POST", "/v1/channels/"+a.cfg.Channel+"/inbox/phone", protocol.InboxPost{Box: box, Push: true}, nil)
+	return err
 }
 
 func (a *Agent) reply(ctx context.Context, ref, typ string, body any) {

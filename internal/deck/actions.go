@@ -907,23 +907,46 @@ func (a *Agent) fsZip(ctx context.Context, body json.RawMessage) (json.RawMessag
 	if len(p.Paths) == 0 || len(p.Paths) > 500 {
 		return nil, errors.New("select 1–500 entries")
 	}
+	abs := make([]string, 0, len(p.Paths))
+	for _, rel := range p.Paths {
+		path, err := a.inHome(rel)
+		if err != nil {
+			return nil, fmt.Errorf("%s: %w", rel, err)
+		}
+		abs = append(abs, path)
+	}
+	data, err := zipPaths(ctx, abs, maxDownload)
+	if err != nil {
+		return nil, err
+	}
+	id, err := a.upload(ctx, data)
+	if err != nil {
+		return nil, err
+	}
+	name := "pocketdeck.zip"
+	if len(p.Paths) == 1 {
+		name = filepath.Base(p.Paths[0]) + ".zip"
+	}
+	return ok(map[string]any{"blob": id, "name": name, "size": len(data)})
+}
+
+// zipPaths packs files and folders (each under its own name, hidden subfolders
+// skipped) into one zip of at most limit bytes of content.
+func zipPaths(ctx context.Context, paths []string, limit int64) ([]byte, error) {
 	var buf bytes.Buffer
 	zw := zip.NewWriter(&buf)
 	total := int64(0)
 	add := func(base, path string, fi os.FileInfo) error {
+		if fi.IsDir() || !fi.Mode().IsRegular() {
+			return nil // folders come with their files; sockets, devices, broken links are skipped
+		}
 		rel, err := filepath.Rel(base, path)
 		if err != nil {
 			return err
 		}
-		if fi.IsDir() {
-			return nil
-		}
-		if !fi.Mode().IsRegular() {
-			return nil // sockets, devices, broken links
-		}
 		total += fi.Size()
-		if total > maxDownload {
-			return fmt.Errorf("selection too large (max %d MB)", maxDownload>>20)
+		if total > limit {
+			return fmt.Errorf("selection too large (max %d MB)", limit>>20)
 		}
 		w, err := zw.Create(filepath.ToSlash(rel))
 		if err != nil {
@@ -937,13 +960,9 @@ func (a *Agent) fsZip(ctx context.Context, body json.RawMessage) (json.RawMessag
 		_, err = io.Copy(w, f)
 		return err
 	}
-	for _, rel := range p.Paths {
-		path, err := a.inHome(rel)
-		if err != nil {
-			return nil, fmt.Errorf("%s: %w", rel, err)
-		}
+	for _, path := range paths {
 		base := filepath.Dir(path)
-		err = filepath.Walk(path, func(p string, fi os.FileInfo, err error) error {
+		err := filepath.Walk(path, func(p string, fi os.FileInfo, err error) error {
 			if err != nil || ctx.Err() != nil {
 				return err
 			}
@@ -959,13 +978,5 @@ func (a *Agent) fsZip(ctx context.Context, body json.RawMessage) (json.RawMessag
 	if err := zw.Close(); err != nil {
 		return nil, err
 	}
-	id, err := a.upload(ctx, buf.Bytes())
-	if err != nil {
-		return nil, err
-	}
-	name := "pocketdeck.zip"
-	if len(p.Paths) == 1 {
-		name = filepath.Base(p.Paths[0]) + ".zip"
-	}
-	return ok(map[string]any{"blob": id, "name": name, "size": buf.Len()})
+	return buf.Bytes(), nil
 }

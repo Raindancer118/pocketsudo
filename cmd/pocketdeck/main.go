@@ -9,6 +9,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"io"
 	"log/slog"
 	"os"
 	"os/exec"
@@ -28,6 +29,8 @@ const usage = `pocketdeck – control this machine from your phone
   pocketdeck pair [--relay URL] [--name NAME] [--print-uri]
   pocketdeck run                 agent loop (what the user service runs)
   pocketdeck install-service     install + start the systemd user service
+  pocketdeck send [--zip] FILE…  send files or folders to the phone (Downloads/PocketDeck)
+  pocketdeck install-menu        add "Send to phone" to the file manager's right-click menu
   pocketdeck status
   pocketdeck selftest            read volume, brightness, media, lock state locally
   pocketdeck version
@@ -51,6 +54,10 @@ func main() {
 		err = run()
 	case "install-service":
 		err = installService()
+	case "send":
+		err = send(os.Args[2:])
+	case "install-menu":
+		err = installMenu()
 	case "status":
 		err = status()
 	case "selftest":
@@ -64,6 +71,75 @@ func main() {
 		fmt.Fprintln(os.Stderr, "pocketdeck:", err)
 		os.Exit(1)
 	}
+}
+
+func send(args []string) error {
+	fs := flag.NewFlagSet("send", flag.ExitOnError)
+	zipAll := fs.Bool("zip", false, "send everything as one zip")
+	notify := fs.Bool("notify", false, "report on the desktop (for the file manager menu)")
+	fs.Parse(args)
+	err := sendFiles(fs.Args(), *zipAll)
+	if *notify {
+		if err != nil {
+			exec.Command("notify-send", "-a", "PocketDeck", "-i", "dialog-error", "Not sent to phone", err.Error()).Run()
+		} else {
+			exec.Command("notify-send", "-a", "PocketDeck", "-i", "smartphone", "Sent to phone", strings.Join(fs.Args(), "\n")).Run()
+		}
+	}
+	return err
+}
+
+func sendFiles(files []string, zipAll bool) error {
+	if len(files) == 0 {
+		return errors.New("usage: pocketdeck send [--zip] FILE…")
+	}
+	cfg, err := deck.Load(deck.DefaultPath())
+	if err != nil {
+		return err
+	}
+	a, err := deck.NewAgent(cfg, deck.NewDesktop(), slog.New(slog.NewTextHandler(io.Discard, nil)))
+	if err != nil {
+		return err
+	}
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
+	defer stop()
+	sent, err := a.SendFiles(ctx, files, zipAll)
+	for _, n := range sent {
+		fmt.Println("sent:", n)
+	}
+	if err == nil {
+		fmt.Println("The phone downloads it now; it waits on the relay for 15 minutes.")
+	}
+	return err
+}
+
+// installMenu adds "Send to phone" to Dolphin's right-click menu (KDE service menu).
+func installMenu() error {
+	bin, err := os.Executable()
+	if err != nil {
+		return err
+	}
+	dir := filepath.Join(xdgData(), "kio", "servicemenus")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return err
+	}
+	menu := "[Desktop Entry]\nType=Service\nMimeType=all/all;\nX-KDE-Protocols=file\nX-KDE-ServiceTypes=KonqPopupMenu/Plugin\nActions=pocketdeckSend\n\n" +
+		"[Desktop Action pocketdeckSend]\nName=Send to phone\nName[de]=An Handy senden\nIcon=smartphone\nExec=\"" + bin + "\" send --notify %F\n"
+	path := filepath.Join(dir, "pocketdeck-send.desktop")
+	// Dolphin ignores service menus that are not executable
+	if err := os.WriteFile(path, []byte(menu), 0o755); err != nil {
+		return err
+	}
+	fmt.Println("Right-click menu installed:", path)
+	return nil
+}
+
+func xdgData() string {
+	if d := os.Getenv("XDG_DATA_HOME"); d != "" {
+		return d
+	}
+	home, _ := os.UserHomeDir()
+	return filepath.Join(home, ".local", "share")
 }
 
 func pair(args []string) error {
@@ -177,5 +253,8 @@ func installService() error {
 		}
 	}
 	fmt.Println("installed", path, "– running")
+	if _, err := exec.LookPath("dolphin"); err == nil {
+		return installMenu()
+	}
 	return nil
 }
