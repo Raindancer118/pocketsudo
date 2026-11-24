@@ -113,10 +113,10 @@ func TestPairMACAndCode(t *testing.T) {
 	}
 }
 
-// TestWriteAndroidVectors keeps ../../android/app/src/test/resources/vectors.json
+// TestWriteAndroidVectors keeps ../../android/core/src/test/resources/vectors.json
 // in sync so the Java side is tested against signatures Go actually produces.
 func TestWriteAndroidVectors(t *testing.T) {
-	path := "../android/app/src/test/resources/vectors.json"
+	path := "../android/core/src/test/resources/vectors.json"
 	if os.Getenv("UPDATE_VECTORS") == "" {
 		if _, err := os.Stat(path); err != nil {
 			t.Skip("vectors not generated yet; run with UPDATE_VECTORS=1")
@@ -157,7 +157,7 @@ func TestWriteAndroidVectors(t *testing.T) {
 		"verification_code": VerificationCode(hostPub, phonePub),
 	}
 	data, _ := json.MarshalIndent(out, "", "  ")
-	if err := os.MkdirAll("../android/app/src/test/resources", 0o755); err != nil {
+	if err := os.MkdirAll("../android/core/src/test/resources", 0o755); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.WriteFile(path, data, 0o644); err != nil {

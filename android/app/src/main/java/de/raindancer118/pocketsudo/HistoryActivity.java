@@ -1,5 +1,7 @@
 package de.raindancer118.pocketsudo;
 
+import de.raindancer118.pocketcore.Ui;
+
 import android.os.Bundle;
 import android.text.format.DateUtils;
 import android.view.LayoutInflater;

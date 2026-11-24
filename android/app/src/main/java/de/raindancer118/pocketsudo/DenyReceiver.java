@@ -1,5 +1,7 @@
 package de.raindancer118.pocketsudo;
 
+import de.raindancer118.pocketcore.Protocol;
+
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;

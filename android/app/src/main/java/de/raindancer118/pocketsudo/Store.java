@@ -1,5 +1,7 @@
 package de.raindancer118.pocketsudo;
 
+import de.raindancer118.pocketcore.Protocol;
+
 import android.content.Context;
 import android.content.SharedPreferences;
 
@@ -144,19 +146,19 @@ public final class Store {
         }
     }
 
-    public synchronized String fcmOptions() {
-        return prefs.getString("fcm_options", "");
-    }
-
-    public synchronized void setFcmOptions(String json) {
-        prefs.edit().putString("fcm_options", json).apply();
-    }
-
-    public int themeMode(int fallback) {
-        return prefs.getInt("theme_mode", fallback);
-    }
-
-    public void setThemeMode(int mode) {
-        prefs.edit().putInt("theme_mode", mode).apply();
+    /** 0.2.x kept Firebase options and the theme here; they live in pocketcore since 0.3. */
+    public void migrateToCore(Context ctx) {
+        android.content.SharedPreferences core = ctx.getSharedPreferences("pocketcore", Context.MODE_PRIVATE);
+        android.content.SharedPreferences.Editor e = core.edit();
+        boolean changed = false;
+        if (!core.contains("fcm_options") && prefs.contains("fcm_options")) {
+            e.putString("fcm_options", prefs.getString("fcm_options", ""));
+            changed = true;
+        }
+        if (!core.contains("theme_mode") && prefs.contains("theme_mode")) {
+            e.putInt("theme_mode", prefs.getInt("theme_mode", -1));
+            changed = true;
+        }
+        if (changed) e.apply();
     }
 }

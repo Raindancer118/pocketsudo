@@ -1,5 +1,8 @@
 package de.raindancer118.pocketsudo;
 
+import de.raindancer118.pocketcore.Protocol;
+import de.raindancer118.pocketcore.Relay;
+
 import android.util.Log;
 
 import androidx.annotation.NonNull;
@@ -57,7 +60,7 @@ public class PushService extends FirebaseMessagingService {
     public void onNewToken(@NonNull String token) {
         for (Store.Pairing p : new Store(this).pairings()) {
             try {
-                Relay.of(p).call("PUT", "/v1/channels/" + p.channel + "/fcm",
+                PairingRelay.of(p).call("PUT", "/v1/channels/" + p.channel + "/fcm",
                         new JSONObject().put("fcm_token", token), 15000);
             } catch (IOException | JSONException e) {
                 Log.w(TAG, "token update for " + p.hostname, e);

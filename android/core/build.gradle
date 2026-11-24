@@ -1,0 +1,37 @@
+plugins {
+    id "com.android.library"
+}
+
+android {
+    namespace "de.raindancer118.pocketcore"
+    compileSdk 36
+
+    defaultConfig {
+        minSdk 30
+        consumerProguardFiles "consumer-rules.pro"
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    lint {
+        abortOnError true
+    }
+
+    testOptions {
+        unitTests.returnDefaultValues = true
+    }
+}
+
+dependencies {
+    api "androidx.appcompat:appcompat:1.8.0"
+    api "androidx.biometric:biometric:1.1.0"
+    api "androidx.core:core:1.17.0"
+    api platform("com.google.firebase:firebase-bom:35.2.0")
+    api "com.google.firebase:firebase-messaging"
+    api "com.google.android.gms:play-services-code-scanner:16.1.0"
+    testImplementation "junit:junit:4.13.2"
+    testImplementation "org.json:json:20260814"
+}

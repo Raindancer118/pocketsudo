@@ -13,4 +13,4 @@ dependencyResolutionManagement {
     }
 }
 rootProject.name = "pocketsudo"
-include ":app"
+include ":core", ":app"

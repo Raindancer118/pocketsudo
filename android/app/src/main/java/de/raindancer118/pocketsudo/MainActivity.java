@@ -1,5 +1,10 @@
 package de.raindancer118.pocketsudo;
 
+import de.raindancer118.pocketcore.Relay;
+import de.raindancer118.pocketcore.Keys;
+import de.raindancer118.pocketcore.Ui;
+import de.raindancer118.pocketcore.Push;
+
 import android.Manifest;
 import android.app.NotificationManager;
 import android.content.Intent;
@@ -180,7 +185,7 @@ public class MainActivity extends AppCompatActivity {
         Ui.confirm(this, getString(R.string.unpair_title, p.hostname), getString(R.string.unpair_body),
                 getString(R.string.unpair), true, () -> App.IO.execute(() -> {
                     try {
-                        Relay.of(p).call("DELETE", "/v1/channels/" + p.channel, null, 15000);
+                        PairingRelay.of(p).call("DELETE", "/v1/channels/" + p.channel, null, 15000);
                     } catch (Exception ignored) {
                         // best effort: the local side is what stops approvals
                     }

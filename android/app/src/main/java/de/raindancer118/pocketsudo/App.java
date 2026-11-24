@@ -1,5 +1,10 @@
 package de.raindancer118.pocketsudo;
 
+import de.raindancer118.pocketcore.Relay;
+import de.raindancer118.pocketcore.Ui;
+import de.raindancer118.pocketcore.Protocol;
+import de.raindancer118.pocketcore.Push;
+
 import android.app.Application;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
@@ -43,7 +48,9 @@ public class App extends Application {
     @Override
     public void onCreate() {
         super.onCreate();
-        AppCompatDelegate.setDefaultNightMode(new Store(this).themeMode(AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM));
+        Relay.userAgent = "pocketsudo-android/" + BuildConfig.VERSION_NAME;
+        new Store(this).migrateToCore(this);
+        AppCompatDelegate.setDefaultNightMode(Ui.themeMode(this));
         NotificationChannel ch = new NotificationChannel(CHANNEL_REQUESTS, getString(R.string.channel_requests),
                 NotificationManager.IMPORTANCE_HIGH);
         ch.setDescription(getString(R.string.channel_requests_desc));

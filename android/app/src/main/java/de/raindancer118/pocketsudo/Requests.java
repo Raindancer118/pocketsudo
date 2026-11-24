@@ -1,5 +1,8 @@
 package de.raindancer118.pocketsudo;
 
+import de.raindancer118.pocketcore.Protocol;
+import de.raindancer118.pocketcore.Relay;
+
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.Context;
@@ -31,11 +34,11 @@ public final class Requests {
 
     /** Fetches and verifies one request and tells the host the phone has it. */
     public static Protocol.Request fetch(Store.Pairing p, String id) throws IOException, GeneralSecurityException {
-        JSONObject o = Relay.of(p).get(base(p) + "/" + id);
+        JSONObject o = PairingRelay.of(p).get(base(p) + "/" + id);
         Protocol.Request r = verified(p, o);
         if (!r.id.equals(id)) throw new SecurityException("request id mismatch");
         try {
-            Relay.of(p).post(base(p) + "/" + id + "/seen", null);
+            PairingRelay.of(p).post(base(p) + "/" + id + "/seen", null);
         } catch (IOException e) {
             Log.w(TAG, "seen", e);
         }
@@ -58,7 +61,7 @@ public final class Requests {
         List<Pair> out = new ArrayList<>();
         for (Store.Pairing p : new Store(ctx).pairings()) {
             try {
-                JSONArray a = (JSONArray) Relay.of(p).call("GET", base(p), null, 15000);
+                JSONArray a = (JSONArray) PairingRelay.of(p).call("GET", base(p), null, 15000);
                 for (int i = 0; i < a.length(); i++) {
                     try {
                         Protocol.Request r = verified(p, a.getJSONObject(i));
@@ -100,7 +103,7 @@ public final class Requests {
         } catch (JSONException e) {
             throw new IOException(e);
         }
-        Relay.of(p).post(base(p) + "/" + r.id + "/response", body);
+        PairingRelay.of(p).post(base(p) + "/" + r.id + "/response", body);
     }
 
     /** Denials are unsigned on purpose; see relay.respond. */
@@ -111,7 +114,7 @@ public final class Requests {
         } catch (JSONException e) {
             throw new IOException(e);
         }
-        Relay.of(p).post(base(p) + "/" + id + "/response", body);
+        PairingRelay.of(p).post(base(p) + "/" + id + "/response", body);
     }
 
     // ---- notifications ----
