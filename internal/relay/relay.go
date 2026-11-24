@@ -12,6 +12,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"log/slog"
 	"net"
 	"net/http"
@@ -22,7 +23,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Raindancer118/pocketsudo/internal/protocol"
+	"github.com/Raindancer118/pocketsudo/protocol"
 )
 
 // Pusher wakes a phone. data must not contain anything sensitive; the phone
@@ -35,6 +36,7 @@ type Options struct {
 	DataDir    string
 	Pusher     Pusher            // nil: no push, phone has to poll
 	FCMConfig  map[string]string // public Firebase client options handed to the app
+	FCMAppIDs  map[string]string // per-app Firebase app ids, e.g. "deck" -> 1:…:android:…
 	TrustProxy bool              // take the client IP from X-Real-IP / X-Forwarded-For
 	Logger     *slog.Logger
 }
@@ -46,6 +48,13 @@ const (
 	maxChannels    = 2000
 	maxPendingPerC = 20
 	maxRequestTTL  = 5 * time.Minute
+
+	inboxTTL     = 10 * time.Minute
+	inboxMax     = 200
+	maxInboxBody = 160 << 10
+	blobTTL      = 15 * time.Minute
+	maxBlob      = 25 << 20
+	maxBlobsPerC = 20
 )
 
 type channel struct {
@@ -59,6 +68,9 @@ type channel struct {
 	PairMAC        string    `json:"pair_mac,omitempty"`
 	FCMToken       string    `json:"fcm_token,omitempty"`
 	State          string    `json:"state"`
+	App            string    `json:"app,omitempty"`
+	HostKX         string    `json:"host_kx,omitempty"`
+	PhoneKX        string    `json:"phone_kx,omitempty"`
 	Created        time.Time `json:"created"`
 	LastSeen       time.Time `json:"last_seen"`
 }
@@ -82,6 +94,19 @@ type Server struct {
 	requests map[string]*pending // key channel/id
 	pairWait map[string]chan struct{}
 	limiter  *limiter
+	inboxes  map[string]*inbox // channel/host or channel/phone
+}
+
+type inboxMsg struct {
+	seq int64
+	box string
+	at  time.Time
+}
+
+type inbox struct {
+	msgs    []inboxMsg
+	next    int64
+	changed chan struct{}
 }
 
 func New(opts Options) (*Server, error) {
@@ -92,7 +117,11 @@ func New(opts Options) (*Server, error) {
 		return nil, err
 	}
 	s := &Server{opts: opts, log: opts.Logger, channels: map[string]*channel{},
-		requests: map[string]*pending{}, pairWait: map[string]chan struct{}{}, limiter: newLimiter(20, time.Minute)}
+		requests: map[string]*pending{}, pairWait: map[string]chan struct{}{}, limiter: newLimiter(20, time.Minute),
+		inboxes: map[string]*inbox{}}
+	if err := os.MkdirAll(filepath.Join(opts.DataDir, "blobs"), 0o700); err != nil {
+		return nil, err
+	}
 	if err := s.load(); err != nil {
 		return nil, err
 	}
@@ -118,12 +147,23 @@ func New(opts Options) (*Server, error) {
 	m.HandleFunc("POST /v1/channels/{c}/requests/{id}/response", s.withPhone(s.respond))
 	m.HandleFunc("GET /v1/channels/{c}/requests/{id}/response", s.withHost(s.waitResponse))
 	m.HandleFunc("DELETE /v1/channels/{c}/requests/{id}", s.withHost(s.cancel))
+	m.HandleFunc("POST /v1/channels/{c}/inbox/{box}", s.withAny(s.inboxPost))
+	m.HandleFunc("GET /v1/channels/{c}/inbox/{box}", s.withAny(s.inboxGet))
+	m.HandleFunc("PUT /v1/channels/{c}/blobs", s.withAny(s.blobPut))
+	m.HandleFunc("GET /v1/channels/{c}/blobs/{id}", s.withAny(s.blobGet))
 	s.mux = m
 	return s, nil
 }
 
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	r.Body = http.MaxBytesReader(w, r.Body, maxBody)
+	limit := int64(maxBody)
+	switch {
+	case strings.Contains(r.URL.Path, "/blobs"):
+		limit = maxBlob
+	case strings.Contains(r.URL.Path, "/inbox/"):
+		limit = maxInboxBody
+	}
+	r.Body = http.MaxBytesReader(w, r.Body, limit)
 	w.Header().Set("Cache-Control", "no-store")
 	s.mux.ServeHTTP(w, r)
 }
@@ -150,6 +190,22 @@ func (s *Server) sweep(now time.Time) {
 			delete(s.requests, k)
 		} else if now.After(p.expires) && (p.state == protocol.ReqPending || p.state == protocol.ReqSeen) {
 			s.setState(p, protocol.ReqExpired)
+		}
+	}
+	for _, ib := range s.inboxes {
+		keep := ib.msgs[:0]
+		for _, m := range ib.msgs {
+			if now.Sub(m.at) < inboxTTL {
+				keep = append(keep, m)
+			}
+		}
+		ib.msgs = keep
+	}
+	if entries, err := os.ReadDir(filepath.Join(s.opts.DataDir, "blobs")); err == nil {
+		for _, e := range entries {
+			if fi, err := e.Info(); err == nil && now.Sub(fi.ModTime()) > blobTTL {
+				os.Remove(filepath.Join(s.opts.DataDir, "blobs", e.Name()))
+			}
 		}
 	}
 	dirty := false
@@ -308,8 +364,18 @@ func (s *Server) withAny(n authed) http.HandlerFunc   { return s.withRole("any",
 
 // ---- pairing ----
 
-func (s *Server) config(w http.ResponseWriter, _ *http.Request) {
-	writeJSON(w, 200, protocol.RelayConfig{FCM: s.opts.FCMConfig})
+func (s *Server) config(w http.ResponseWriter, r *http.Request) {
+	cfg := map[string]string{}
+	for k, v := range s.opts.FCMConfig {
+		cfg[k] = v
+	}
+	if id, ok := s.opts.FCMAppIDs[r.URL.Query().Get("app")]; ok && id != "" {
+		cfg["app_id"] = id
+	}
+	if len(cfg) == 0 {
+		cfg = nil
+	}
+	writeJSON(w, 200, protocol.RelayConfig{FCM: cfg})
 }
 
 func (s *Server) createChannel(w http.ResponseWriter, r *http.Request) {
@@ -330,9 +396,21 @@ func (s *Server) createChannel(w http.ResponseWriter, r *http.Request) {
 		fail(w, 400, "hostname too long")
 		return
 	}
+	switch req.App {
+	case "", protocol.AppSudo:
+		req.App = protocol.AppSudo
+	case protocol.AppDeck:
+		if _, err := protocol.DecodeKXPublic(req.HostKX); err != nil {
+			fail(w, 400, "deck channel needs host_kx")
+			return
+		}
+	default:
+		fail(w, 400, "unknown app")
+		return
+	}
 	token := protocol.RandomID(32)
 	c := &channel{ID: protocol.RandomID(16), HostPub: req.HostPub, Hostname: req.Hostname,
-		HostTokenHash: hashToken(token), State: protocol.StatePairing, Created: time.Now()}
+		HostTokenHash: hashToken(token), State: protocol.StatePairing, Created: time.Now(), App: req.App, HostKX: req.HostKX}
 	s.mu.Lock()
 	if len(s.channels) >= maxChannels {
 		s.mu.Unlock()
@@ -351,7 +429,7 @@ func (s *Server) hostInfo(w http.ResponseWriter, r *http.Request) {
 	c := s.channels[r.PathValue("c")]
 	var info protocol.HostInfo
 	if c != nil {
-		info = protocol.HostInfo{HostPub: c.HostPub, Hostname: c.Hostname, State: c.State}
+		info = protocol.HostInfo{HostPub: c.HostPub, Hostname: c.Hostname, State: c.State, App: c.App, HostKX: c.HostKX}
 	}
 	s.mu.Unlock()
 	if c == nil {
@@ -391,6 +469,12 @@ func (s *Server) registerPhone(w http.ResponseWriter, r *http.Request) {
 		fail(w, 400, err.Error())
 		return
 	}
+	if req.PhoneKX != "" {
+		if _, err := protocol.DecodeKXPublic(req.PhoneKX); err != nil {
+			fail(w, 400, "phone_kx: "+err.Error())
+			return
+		}
+	}
 	if len(req.DeviceName) > 128 || len(req.FCMToken) > 4096 || len(req.MAC) > 128 {
 		fail(w, 400, "field too long")
 		return
@@ -407,7 +491,11 @@ func (s *Server) registerPhone(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	token := protocol.RandomID(32)
-	c.PhonePub, c.DeviceName, c.FCMToken, c.PairMAC = req.PhonePub, req.DeviceName, req.FCMToken, req.MAC
+	if c.App == protocol.AppDeck && req.PhoneKX == "" {
+		fail(w, 400, "deck channel needs phone_kx")
+		return
+	}
+	c.PhonePub, c.PhoneKX, c.DeviceName, c.FCMToken, c.PairMAC = req.PhonePub, req.PhoneKX, req.DeviceName, req.FCMToken, req.MAC
 	c.PhoneTokenHash = hashToken(token)
 	c.State = protocol.StateClaimed
 	c.LastSeen = time.Now()
@@ -421,7 +509,7 @@ func (s *Server) pairingInfo(w http.ResponseWriter, r *http.Request, c *channel)
 	for {
 		s.mu.Lock()
 		if c.State != protocol.StatePairing {
-			info := protocol.PairingInfo{PhonePub: c.PhonePub, DeviceName: c.DeviceName, MAC: c.PairMAC}
+			info := protocol.PairingInfo{PhonePub: c.PhonePub, PhoneKX: c.PhoneKX, DeviceName: c.DeviceName, MAC: c.PairMAC}
 			s.mu.Unlock()
 			writeJSON(w, 200, info)
 			return
@@ -456,7 +544,7 @@ func (s *Server) confirm(w http.ResponseWriter, r *http.Request, c *channel) {
 		c.PairMAC = ""
 	} else {
 		c.State = protocol.StatePairing
-		c.PhonePub, c.DeviceName, c.FCMToken, c.PairMAC, c.PhoneTokenHash = "", "", "", "", ""
+		c.PhonePub, c.PhoneKX, c.DeviceName, c.FCMToken, c.PairMAC, c.PhoneTokenHash = "", "", "", "", "", ""
 	}
 	s.saveLocked()
 	s.notifyPairing(c.ID)
@@ -503,6 +591,15 @@ func (s *Server) updateFCM(w http.ResponseWriter, r *http.Request, c *channel) {
 func (s *Server) deleteChannel(w http.ResponseWriter, r *http.Request, c *channel) {
 	s.mu.Lock()
 	delete(s.channels, c.ID)
+	delete(s.inboxes, c.ID+"/host")
+	delete(s.inboxes, c.ID+"/phone")
+	if entries, err := os.ReadDir(filepath.Join(s.opts.DataDir, "blobs")); err == nil {
+		for _, e := range entries {
+			if strings.HasPrefix(e.Name(), c.ID+"_") {
+				os.Remove(filepath.Join(s.opts.DataDir, "blobs", e.Name()))
+			}
+		}
+	}
 	for k, p := range s.requests {
 		if p.channel == c.ID {
 			s.setState(p, protocol.ReqCancelled)
@@ -752,4 +849,157 @@ func (l *limiter) allow(key string) bool {
 		l.hits = map[string][]time.Time{}
 	}
 	return true
+}
+
+// ---- deck mailbox ----
+
+// role returns "host" or "phone" for the token used on this request.
+func (s *Server) role(r *http.Request, c *channel) string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if tokenOK(c.HostTokenHash, bearer(r)) {
+		return "host"
+	}
+	return "phone"
+}
+
+func (s *Server) inboxLocked(key string) *inbox {
+	ib, ok := s.inboxes[key]
+	if !ok {
+		ib = &inbox{changed: make(chan struct{})}
+		s.inboxes[key] = ib
+	}
+	return ib
+}
+
+func (s *Server) inboxPost(w http.ResponseWriter, r *http.Request, c *channel) {
+	box := r.PathValue("box")
+	sender := s.role(r, c)
+	// you only ever write into the other side's inbox
+	if (box != "host" && box != "phone") || box == sender {
+		fail(w, http.StatusUnauthorized, "wrong inbox for this token")
+		return
+	}
+	var req protocol.InboxPost
+	if err := readJSON(r, &req); err != nil {
+		var mbe *http.MaxBytesError
+		if errors.As(err, &mbe) {
+			fail(w, http.StatusRequestEntityTooLarge, "message too large")
+			return
+		}
+		fail(w, 400, "bad json")
+		return
+	}
+	if req.Box == "" {
+		fail(w, 400, "empty box")
+		return
+	}
+	s.mu.Lock()
+	if c.State != protocol.StateActive {
+		s.mu.Unlock()
+		fail(w, http.StatusConflict, "channel not paired")
+		return
+	}
+	ib := s.inboxLocked(c.ID + "/" + box)
+	ib.next++
+	ib.msgs = append(ib.msgs, inboxMsg{seq: ib.next, box: req.Box, at: time.Now()})
+	if len(ib.msgs) > inboxMax {
+		ib.msgs = ib.msgs[len(ib.msgs)-inboxMax:]
+	}
+	seq := ib.next
+	close(ib.changed)
+	ib.changed = make(chan struct{})
+	s.mu.Unlock()
+	if req.Push && box == "phone" {
+		s.push(c, map[string]string{"type": "deck", "channel": c.ID}, time.Minute)
+	}
+	writeJSON(w, 201, protocol.InboxPostResp{Seq: seq})
+}
+
+func (s *Server) inboxGet(w http.ResponseWriter, r *http.Request, c *channel) {
+	box := r.PathValue("box")
+	if box != s.role(r, c) {
+		fail(w, http.StatusUnauthorized, "not your inbox")
+		return
+	}
+	after, _ := strconv.ParseInt(r.URL.Query().Get("after"), 10, 64)
+	deadline := time.After(waitParam(r))
+	for {
+		s.mu.Lock()
+		ib := s.inboxLocked(c.ID + "/" + box)
+		out := []protocol.InboxMessage{}
+		for _, m := range ib.msgs {
+			if m.seq > after {
+				out = append(out, protocol.InboxMessage{Seq: m.seq, Box: m.box})
+			}
+		}
+		ch := ib.changed
+		s.mu.Unlock()
+		if len(out) > 0 {
+			writeJSON(w, 200, protocol.InboxResp{Messages: out})
+			return
+		}
+		select {
+		case <-ch:
+		case <-deadline:
+			writeJSON(w, 200, protocol.InboxResp{Messages: out})
+			return
+		case <-r.Context().Done():
+			return
+		}
+	}
+}
+
+func (s *Server) blobPath(c *channel, id string) (string, bool) {
+	if len(id) != 32 || strings.Trim(id, "0123456789abcdef") != "" {
+		return "", false
+	}
+	return filepath.Join(s.opts.DataDir, "blobs", c.ID+"_"+id), true
+}
+
+func (s *Server) blobPut(w http.ResponseWriter, r *http.Request, c *channel) {
+	dir := filepath.Join(s.opts.DataDir, "blobs")
+	if entries, err := os.ReadDir(dir); err == nil {
+		n := 0
+		for _, e := range entries {
+			if strings.HasPrefix(e.Name(), c.ID+"_") {
+				n++
+			}
+		}
+		if n >= maxBlobsPerC {
+			fail(w, http.StatusTooManyRequests, "too many files waiting")
+			return
+		}
+	}
+	id := protocol.RandomID(16)
+	path, _ := s.blobPath(c, id)
+	f, err := os.OpenFile(path, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o600)
+	if err != nil {
+		fail(w, 500, "store failed")
+		return
+	}
+	_, err = io.Copy(f, r.Body)
+	f.Close()
+	if err != nil {
+		os.Remove(path)
+		fail(w, http.StatusRequestEntityTooLarge, "file too large or upload broken")
+		return
+	}
+	writeJSON(w, 201, protocol.BlobResp{ID: id})
+}
+
+func (s *Server) blobGet(w http.ResponseWriter, r *http.Request, c *channel) {
+	path, ok := s.blobPath(c, r.PathValue("id"))
+	if !ok {
+		fail(w, 404, "unknown file")
+		return
+	}
+	f, err := os.Open(path)
+	if err != nil {
+		fail(w, 404, "unknown file")
+		return
+	}
+	defer f.Close()
+	w.Header().Set("Content-Type", "application/octet-stream")
+	io.Copy(w, f)
 }

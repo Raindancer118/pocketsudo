@@ -16,8 +16,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Raindancer118/pocketsudo/internal/protocol"
 	"github.com/Raindancer118/pocketsudo/internal/relay"
+	"github.com/Raindancer118/pocketsudo/protocol"
 )
 
 // fakePhone behaves like the Android app: it scans the QR URI, registers and

@@ -13,7 +13,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/Raindancer118/pocketsudo/internal/protocol"
+	"github.com/Raindancer118/pocketsudo/protocol"
 )
 
 const DefaultRelay = "https://pocketsudo.raindancer118.de"

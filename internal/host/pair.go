@@ -12,7 +12,7 @@ import (
 
 	"github.com/mdp/qrterminal/v3"
 
-	"github.com/Raindancer118/pocketsudo/internal/protocol"
+	"github.com/Raindancer118/pocketsudo/protocol"
 )
 
 // PairURI is what the QR code holds. The secret never reaches the relay.

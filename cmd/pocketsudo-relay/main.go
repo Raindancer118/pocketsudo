@@ -6,6 +6,7 @@
 //	FCM_SERVICE_ACCOUNT_FILE  Firebase service account JSON (enables push)
 //	FCM_SERVICE_ACCOUNT_JSON  the same, inline (for a docker .env)
 //	FCM_API_KEY, FCM_APP_ID, FCM_SENDER_ID  public Firebase client options for the app
+//	FCM_APP_ID_DECK   Firebase app id of the PocketDeck app (same project)
 package main
 
 import (
@@ -61,6 +62,7 @@ func main() {
 			"app_id":     os.Getenv("FCM_APP_ID"),
 			"sender_id":  os.Getenv("FCM_SENDER_ID"),
 		}
+		opts.FCMAppIDs = map[string]string{"deck": os.Getenv("FCM_APP_ID_DECK")}
 		log.Info("push enabled", "project", fcm.ProjectID())
 	} else {
 		log.Warn("no FCM service account: no push, phones only see requests when the app is open")

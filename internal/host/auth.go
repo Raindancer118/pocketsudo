@@ -11,7 +11,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Raindancer118/pocketsudo/internal/protocol"
+	"github.com/Raindancer118/pocketsudo/protocol"
 )
 
 // Session describes what is being authorized; it ends up on the phone screen.

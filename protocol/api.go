@@ -5,6 +5,8 @@ package protocol
 type CreateChannelReq struct {
 	HostPub  string `json:"host_pub"`
 	Hostname string `json:"hostname"`
+	App      string `json:"app,omitempty"`     // "sudo" (default) or "deck"
+	HostKX   string `json:"host_kx,omitempty"` // deck: ECDH public key
 }
 
 type CreateChannelResp struct {
@@ -16,10 +18,13 @@ type HostInfo struct {
 	HostPub  string `json:"host_pub"`
 	Hostname string `json:"hostname"`
 	State    string `json:"state"`
+	App      string `json:"app,omitempty"`
+	HostKX   string `json:"host_kx,omitempty"`
 }
 
 type RegisterPhoneReq struct {
 	PhonePub   string `json:"phone_pub"`
+	PhoneKX    string `json:"phone_kx,omitempty"`
 	DeviceName string `json:"device_name"`
 	FCMToken   string `json:"fcm_token"`
 	MAC        string `json:"mac"`
@@ -31,6 +36,7 @@ type RegisterPhoneResp struct {
 
 type PairingInfo struct {
 	PhonePub   string `json:"phone_pub"`
+	PhoneKX    string `json:"phone_kx,omitempty"`
 	DeviceName string `json:"device_name"`
 	MAC        string `json:"mac"`
 }
@@ -62,12 +68,36 @@ type RelayConfig struct {
 }
 
 const (
-	StatePairing   = "pairing"
-	StateClaimed   = "claimed"
-	StateActive    = "active"
-	ReqPending     = "pending"
-	ReqSeen        = "seen"
-	ReqAnswered    = "answered"
-	ReqCancelled   = "cancelled"
-	ReqExpired     = "expired"
+	StatePairing = "pairing"
+	StateClaimed = "claimed"
+	StateActive  = "active"
+	ReqPending   = "pending"
+	ReqSeen      = "seen"
+	ReqAnswered  = "answered"
+	ReqCancelled = "cancelled"
+	ReqExpired   = "expired"
 )
+
+// Deck mailbox: opaque sealed boxes, one inbox per side.
+
+type InboxPost struct {
+	Box  string `json:"box"`
+	Push bool   `json:"push,omitempty"` // wake the phone via FCM
+}
+
+type InboxPostResp struct {
+	Seq int64 `json:"seq"`
+}
+
+type InboxMessage struct {
+	Seq int64  `json:"seq"`
+	Box string `json:"box"`
+}
+
+type InboxResp struct {
+	Messages []InboxMessage `json:"messages"`
+}
+
+type BlobResp struct {
+	ID string `json:"id"`
+}

@@ -15,7 +15,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Raindancer118/pocketsudo/internal/protocol"
+	"github.com/Raindancer118/pocketsudo/protocol"
 )
 
 var quiet = slog.New(slog.NewTextHandler(io.Discard, nil))
