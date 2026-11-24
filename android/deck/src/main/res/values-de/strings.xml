@@ -218,4 +218,9 @@
     <string name="files_channel">Dateien vom Computer</string>
     <string name="file_received">Datei von %1$s</string>
     <string name="file_receive_failed">%1$s kam nicht an</string>
+    <string name="file_offer_title">%1$s möchte dir eine Datei schicken</string>
+    <string name="file_offer_text">%1$s · %2$s</string>
+    <string name="file_accept">Annehmen</string>
+    <string name="file_decline">Ablehnen</string>
+    <string name="file_loading">Empfange %1$s …</string>
 </resources>

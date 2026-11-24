@@ -49,6 +49,11 @@
             android:name=".FilesActivity"
             android:exported="false" />
 
+        <!-- accept / decline buttons of file offers from the computer -->
+        <receiver
+            android:name=".Incoming"
+            android:exported="false" />
+
         <activity
             android:name=".SettingsActivity"
             android:exported="false" />

@@ -220,4 +220,9 @@
     <string name="files_channel">Files from the computer</string>
     <string name="file_received">File from %1$s</string>
     <string name="file_receive_failed">%1$s could not be received</string>
+    <string name="file_offer_title">%1$s wants to send you a file</string>
+    <string name="file_offer_text">%1$s · %2$s</string>
+    <string name="file_accept">Accept</string>
+    <string name="file_decline">Decline</string>
+    <string name="file_loading">Receiving %1$s …</string>
 </resources>
