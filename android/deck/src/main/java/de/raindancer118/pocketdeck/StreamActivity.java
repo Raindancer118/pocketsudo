@@ -107,6 +107,7 @@ public class StreamActivity extends AppCompatActivity {
         });
         setupTouch();
         loadSources();
+        prefetchIce();
         String[][] audios = {{"none", getString(R.string.audio_none)}, {"system", getString(R.string.audio_system)}, {"mic", getString(R.string.audio_mic)}};
         LinearLayout ar = findViewById(R.id.audios);
         for (String[] a : audios) {
@@ -297,7 +298,7 @@ public class StreamActivity extends AppCompatActivity {
      * Android only reports "complete" after every network (Wi-Fi, mobile IPv6) and
      * every TURN transport answered or timed out, which takes seconds.
      */
-    private static final long OFFER_MAX_WAIT_MS = 1500, OFFER_AFTER_PUBLIC_MS = 250;
+    private static final long OFFER_MAX_WAIT_MS = 1500, OFFER_AFTER_PUBLIC_MS = 100;
     private boolean offerSent;
     private final Runnable sendOfferNow = () -> {
         if (offerSent || pc == null) return;
@@ -312,25 +313,50 @@ public class StreamActivity extends AppCompatActivity {
         android.util.Log.i("PocketDeck", "stream " + step + " +" + (android.os.SystemClock.elapsedRealtime() - t0) + " ms");
     }
 
+    // TURN credentials live an hour: fetched while the picker is open, so the tap
+    // on "start" does not wait for a relay round trip
+    private static List<PeerConnection.IceServer> iceCache;
+    private static long iceCacheUntil;
+
+    private void prefetchIce() {
+        deck.io().execute(this::iceServers);
+    }
+
+    /** STUN plus the relay's TURN credentials; cached, safe to call off the UI thread. */
+    private List<PeerConnection.IceServer> iceServers() {
+        synchronized (StreamActivity.class) {
+            if (iceCache != null && System.currentTimeMillis() < iceCacheUntil) return iceCache;
+        }
+        List<PeerConnection.IceServer> ice = new ArrayList<>();
+        ice.add(PeerConnection.IceServer.builder("stun:stun.l.google.com:19302").createIceServer());
+        DeckStore.Pairing p = deck.pairing();
+        long ttl = 0;
+        try {
+            JSONObject t = new de.raindancer118.pocketcore.Relay(p.relay, p.phoneToken).get("/v1/channels/" + p.channel + "/turn");
+            JSONArray urls = t.getJSONArray("urls");
+            List<String> list = new ArrayList<>();
+            for (int i = 0; i < urls.length(); i++) list.add(urls.getString(i));
+            ice.add(PeerConnection.IceServer.builder(list).setUsername(t.getString("username"))
+                    .setPassword(t.getString("credential")).createIceServer());
+            ttl = Math.max(0, t.optLong("ttl", 3600) - 300) * 1000; // renew 5 min early
+        } catch (Exception ignored) {
+            // no TURN: direct connections still work on most networks
+        }
+        synchronized (StreamActivity.class) {
+            if (ttl > 0) {
+                iceCache = ice;
+                iceCacheUntil = System.currentTimeMillis() + ttl;
+            }
+        }
+        return ice;
+    }
+
     private void start() {
         t0 = android.os.SystemClock.elapsedRealtime();
         if (source.isEmpty()) return;
         pickerMessage.setText(R.string.stream_connecting);
-        // TURN credentials from the relay first (mobile networks), then connect
         deck.io().execute(() -> {
-            List<PeerConnection.IceServer> ice = new ArrayList<>();
-            ice.add(PeerConnection.IceServer.builder("stun:stun.l.google.com:19302").createIceServer());
-            DeckStore.Pairing p = deck.pairing();
-            try {
-                JSONObject t = new de.raindancer118.pocketcore.Relay(p.relay, p.phoneToken).get("/v1/channels/" + p.channel + "/turn");
-                JSONArray urls = t.getJSONArray("urls");
-                List<String> list = new ArrayList<>();
-                for (int i = 0; i < urls.length(); i++) list.add(urls.getString(i));
-                ice.add(PeerConnection.IceServer.builder(list).setUsername(t.getString("username"))
-                        .setPassword(t.getString("credential")).createIceServer());
-            } catch (Exception ignored) {
-                // no TURN: direct connections still work on most networks
-            }
+            List<PeerConnection.IceServer> ice = iceServers();
             runOnUiThread(() -> connect(ice));
         });
     }
