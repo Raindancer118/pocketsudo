@@ -15,5 +15,6 @@ public class DeckApp extends Application {
         Relay.userAgent = "pocketdeck-android/" + BuildConfig.VERSION_NAME;
         AppCompatDelegate.setDefaultNightMode(Ui.themeMode(this));
         Push.initFromStore(this);
+        Incoming.createChannel(this);
     }
 }

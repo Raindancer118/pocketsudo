@@ -217,4 +217,7 @@
     <string name="bt_paired">Paired</string>
     <string name="wifi_saved">Saved</string>
     <string name="wifi_open">Open</string>
+    <string name="files_channel">Files from the computer</string>
+    <string name="file_received">File from %1$s</string>
+    <string name="file_receive_failed">%1$s could not be received</string>
 </resources>

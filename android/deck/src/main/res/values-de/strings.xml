@@ -215,4 +215,7 @@
     <string name="bt_paired">Gekoppelt</string>
     <string name="wifi_saved">Gespeichert</string>
     <string name="wifi_open">Offen</string>
+    <string name="files_channel">Dateien vom Computer</string>
+    <string name="file_received">Datei von %1$s</string>
+    <string name="file_receive_failed">%1$s kam nicht an</string>
 </resources>

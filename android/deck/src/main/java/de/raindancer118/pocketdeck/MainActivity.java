@@ -89,6 +89,11 @@ public class MainActivity extends AppCompatActivity {
         lockLabel = findViewById(R.id.lock_label);
         message = findViewById(R.id.message);
         quick = new QuickSettings(this, deck, text -> say(message, text));
+        // files sent from the computer announce themselves with a notification
+        if (android.os.Build.VERSION.SDK_INT >= 33
+                && checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(new String[]{android.Manifest.permission.POST_NOTIFICATIONS}, 1);
+        }
         tabStart = findViewById(R.id.tab_start);
         tabRemote = findViewById(R.id.tab_remote);
         playingOn = findViewById(R.id.playing_on);

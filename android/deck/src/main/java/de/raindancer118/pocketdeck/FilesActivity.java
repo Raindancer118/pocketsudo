@@ -1,20 +1,16 @@
 package de.raindancer118.pocketdeck;
 
-import android.content.ContentValues;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
-import android.os.Environment;
 import android.os.Handler;
 import android.os.Looper;
-import android.provider.MediaStore;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.text.format.DateUtils;
 import android.text.format.Formatter;
 import android.view.LayoutInflater;
 import android.view.View;
-import android.webkit.MimeTypeMap;
 import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.TextView;
@@ -28,9 +24,7 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import java.io.OutputStream;
 import java.util.LinkedHashSet;
-import java.util.Locale;
 import java.util.Set;
 
 import de.raindancer118.pocketcore.Ui;
@@ -286,11 +280,11 @@ public class FilesActivity extends AppCompatActivity {
                 JSONObject o = new JSONObject(data);
                 String name = o.getString("name");
                 byte[] bytes = deck.download(o.getString("blob"));
-                Uri uri = saveDownload(name, bytes);
+                Uri uri = Transfer.saveDownload(this, name, bytes);
                 runOnUiThread(() -> {
                     say(getString(R.string.downloaded, name));
                     try {
-                        startActivity(new Intent(Intent.ACTION_VIEW).setDataAndType(uri, mime(name))
+                        startActivity(new Intent(Intent.ACTION_VIEW).setDataAndType(uri, Transfer.mime(name))
                                 .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION));
                     } catch (android.content.ActivityNotFoundException ignored) {
                     }
@@ -299,20 +293,6 @@ public class FilesActivity extends AppCompatActivity {
                 runOnUiThread(() -> say(e.getMessage()));
             }
         });
-    }
-
-    private Uri saveDownload(String name, byte[] bytes) throws java.io.IOException {
-        ContentValues v = new ContentValues();
-        v.put(MediaStore.Downloads.DISPLAY_NAME, name);
-        v.put(MediaStore.Downloads.MIME_TYPE, mime(name));
-        v.put(MediaStore.Downloads.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS + "/PocketDeck");
-        Uri uri = getContentResolver().insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, v);
-        if (uri == null) throw new java.io.IOException("downloads not available");
-        try (OutputStream out = getContentResolver().openOutputStream(uri)) {
-            if (out == null) throw new java.io.IOException("downloads not writable");
-            out.write(bytes);
-        }
-        return uri;
     }
 
     private void uploadHere(Uri uri) {
@@ -332,12 +312,6 @@ public class FilesActivity extends AppCompatActivity {
                 runOnUiThread(() -> say(e.getMessage()));
             }
         });
-    }
-
-    private static String mime(String name) {
-        int dot = name.lastIndexOf('.');
-        String m = dot < 0 ? null : MimeTypeMap.getSingleton().getMimeTypeFromExtension(name.substring(dot + 1).toLowerCase(Locale.ROOT));
-        return m == null ? "application/octet-stream" : m;
     }
 
     private static String json(String k, String v) {

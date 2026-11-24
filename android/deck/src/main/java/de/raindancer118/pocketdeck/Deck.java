@@ -65,6 +65,11 @@ final class Deck {
         return store.pairing();
     }
 
+    String hostName() {
+        DeckStore.Pairing p = store.pairing();
+        return p == null ? "" : p.hostname;
+    }
+
     private synchronized byte[] key(DeckStore.Pairing p) throws GeneralSecurityException {
         if (key == null) key = KxKeys.deriveKey(p);
         return key;
@@ -179,6 +184,10 @@ final class Deck {
 
     /** Unsolicited events from the computer. */
     private void event(DeckCrypto.Message m) throws JSONException {
+        if ("file".equals(m.type)) {
+            Incoming.file(ctx, this, new JSONObject(m.body));
+            return;
+        }
         if ("clipboard".equals(m.type)) {
             String text = new JSONObject(m.body).optString("text");
             if (text.isEmpty()) return;

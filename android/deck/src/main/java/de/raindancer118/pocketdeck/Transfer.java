@@ -77,6 +77,28 @@ final class Transfer {
         return uri;
     }
 
+    /** Stores a file in Downloads/PocketDeck and returns its content uri. */
+    static Uri saveDownload(Context ctx, String name, byte[] bytes) throws IOException {
+        ContentValues v = new ContentValues();
+        v.put(MediaStore.Downloads.DISPLAY_NAME, name);
+        v.put(MediaStore.Downloads.MIME_TYPE, mime(name));
+        v.put(MediaStore.Downloads.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS + "/PocketDeck");
+        Uri uri = ctx.getContentResolver().insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, v);
+        if (uri == null) throw new IOException("downloads not available");
+        try (OutputStream out = ctx.getContentResolver().openOutputStream(uri)) {
+            if (out == null) throw new IOException("downloads not writable");
+            out.write(bytes);
+        }
+        return uri;
+    }
+
+    static String mime(String name) {
+        int dot = name.lastIndexOf('.');
+        String m = dot < 0 ? null : android.webkit.MimeTypeMap.getSingleton()
+                .getMimeTypeFromExtension(name.substring(dot + 1).toLowerCase(java.util.Locale.ROOT));
+        return m == null ? "application/octet-stream" : m;
+    }
+
     static String blobOf(String data) throws JSONException {
         return new JSONObject(data).getString("blob");
     }
