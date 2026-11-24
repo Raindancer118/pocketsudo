@@ -70,4 +70,10 @@
     <string name="screenshot_taking">Taking screenshot …</string>
     <string name="screenshot_saved">Saved in Pictures/PocketDeck</string>
     <string name="needs_session">Open remote control under Keyboard first</string>
+    <string name="files">Files</string>
+    <string name="upload_here">Upload here</string>
+    <string name="files_session_hint">One fingerprint opens your home folder for 15 minutes</string>
+    <string name="folder_empty">Empty folder</string>
+    <string name="downloading">Downloading %1$s …</string>
+    <string name="downloaded">%1$s in Downloads/PocketDeck</string>
 </resources>

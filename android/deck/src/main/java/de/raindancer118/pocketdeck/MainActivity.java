@@ -133,6 +133,7 @@ public class MainActivity extends AppCompatActivity {
                     Transfer.sendFile(this, uri, (ok, err, data) -> say(remoteMessage, ok ? getString(R.string.file_sent) : err));
                 });
         row(R.id.send_file, R.drawable.ic_file, () -> pick.launch(new String[]{"*/*"}));
+        row(R.id.files, R.drawable.ic_folder, () -> startActivity(new Intent(this, FilesActivity.class)));
         row(R.id.screenshot, R.drawable.ic_screen, () -> startActivity(new Intent(this, ScreenshotActivity.class)));
     }
 

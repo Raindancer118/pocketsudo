@@ -43,6 +43,7 @@ type Agent struct {
 	batteryDir  string
 	hostname    string
 	downloadDir string
+	home        string // the file browser never leaves this directory
 
 	mu           sync.Mutex
 	sessionUntil time.Time
@@ -68,7 +69,7 @@ func NewAgent(cfg *Config, sys System, log *slog.Logger) (*Agent, error) {
 	hn, _ := os.Hostname()
 	return &Agent{cfg: cfg, sys: sys, log: log, key: key, phonePub: pub,
 		client: host.NewClient(cfg.Relay, cfg.HostToken), guard: protocol.NewReplayGuard(),
-		batteryDir: "/sys/class/power_supply", hostname: hn, downloadDir: defaultDownloadDir()}, nil
+		batteryDir: "/sys/class/power_supply", hostname: hn, downloadDir: defaultDownloadDir(), home: homeDir()}, nil
 }
 
 // Run long-polls the host inbox until ctx ends.

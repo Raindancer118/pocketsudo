@@ -66,6 +66,9 @@
             android:exported="false"
             android:windowSoftInputMode="adjustResize" />
         <activity
+            android:name="de.raindancer118.pocketdeck.FilesActivity"
+            android:exported="false" />
+        <activity
             android:name="de.raindancer118.pocketdeck.ScreenshotActivity"
             android:exported="false" />
 

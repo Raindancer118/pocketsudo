@@ -20,7 +20,6 @@ import org.json.JSONObject;
 import java.util.LinkedHashSet;
 import java.util.Set;
 
-import de.raindancer118.pocketcore.DeckCrypto;
 
 /** Virtual keyboard: text, sticky modifiers, special keys and common shortcuts. */
 public class KeyboardActivity extends AppCompatActivity {
@@ -131,31 +130,10 @@ public class KeyboardActivity extends AppCompatActivity {
     }
 
     private void openSession() {
-        DeckStore.Pairing p = deck.pairing();
-        if (p == null) return;
-        BioSign.sign(this, DeckCrypto.newMessage("session.open", "{}"), getString(R.string.bio_session, p.hostname),
-                new BioSign.Result() {
-                    @Override
-                    public void signed(DeckCrypto.Message m) {
-                        deck.send(m, (ok, err, data) -> {
-                            if (!ok) {
-                                say(err);
-                                return;
-                            }
-                            try {
-                                deck.sessionUntil = new JSONObject(data).getLong("until") * 1000;
-                            } catch (JSONException e) {
-                                deck.sessionUntil = System.currentTimeMillis() + 15 * 60_000;
-                            }
-                            render();
-                        });
-                    }
-
-                    @Override
-                    public void failed(String why) {
-                        say(why);
-                    }
-                });
+        Session.open(this, (ok, err) -> {
+            if (!ok) say(err);
+            render();
+        });
     }
 
     private void toggle(String mod) {
@@ -188,7 +166,7 @@ public class KeyboardActivity extends AppCompatActivity {
         deck.send("key", json("combo", combo), (ok, err, data) -> {
             if (!ok) {
                 say(err);
-                if (err != null && err.contains("fingerprint")) deck.sessionUntil = 0;
+                if (Session.isSessionError(err)) deck.sessionUntil = 0;
                 render();
             }
         });

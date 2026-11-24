@@ -1,9 +1,9 @@
 -- Merging decision tree log ---
 manifest
-ADDED from /home/tom/Projekte/SEProjects/pocketsudo/android/deck/src/main/AndroidManifest.xml:2:1-75:12
-INJECTED from /home/tom/Projekte/SEProjects/pocketsudo/android/deck/src/main/AndroidManifest.xml:2:1-75:12
-INJECTED from /home/tom/Projekte/SEProjects/pocketsudo/android/deck/src/main/AndroidManifest.xml:2:1-75:12
-INJECTED from /home/tom/Projekte/SEProjects/pocketsudo/android/deck/src/main/AndroidManifest.xml:2:1-75:12
+ADDED from /home/tom/Projekte/SEProjects/pocketsudo/android/deck/src/main/AndroidManifest.xml:2:1-79:12
+INJECTED from /home/tom/Projekte/SEProjects/pocketsudo/android/deck/src/main/AndroidManifest.xml:2:1-79:12
+INJECTED from /home/tom/Projekte/SEProjects/pocketsudo/android/deck/src/main/AndroidManifest.xml:2:1-79:12
+INJECTED from /home/tom/Projekte/SEProjects/pocketsudo/android/deck/src/main/AndroidManifest.xml:2:1-79:12
 MERGED from [:core] /home/tom/Projekte/SEProjects/pocketsudo/android/core/build/intermediates/merged_manifest/debug/processDebugManifest/AndroidManifest.xml:2:1-7:12
 MERGED from [androidx.biometric:biometric:1.1.0] /home/tom/.gradle/caches/8.14.5/transforms/c061a01ac899352415441773997fc09a/transformed/biometric-1.1.0/AndroidManifest.xml:17:1-29:12
 MERGED from [androidx.appcompat:appcompat-resources:1.8.0] /home/tom/.gradle/caches/8.14.5/transforms/291c3d9f635fcb05106ca9a408a6c0eb/transformed/appcompat-resources-1.8.0/AndroidManifest.xml:2:1-7:12
@@ -96,8 +96,8 @@ ADDED from /home/tom/Projekte/SEProjects/pocketsudo/android/deck/src/main/Androi
 	android:name
 		ADDED from /home/tom/Projekte/SEProjects/pocketsudo/android/deck/src/main/AndroidManifest.xml:6:22-63
 application
-ADDED from /home/tom/Projekte/SEProjects/pocketsudo/android/deck/src/main/AndroidManifest.xml:8:5-74:19
-INJECTED from /home/tom/Projekte/SEProjects/pocketsudo/android/deck/src/main/AndroidManifest.xml:8:5-74:19
+ADDED from /home/tom/Projekte/SEProjects/pocketsudo/android/deck/src/main/AndroidManifest.xml:8:5-78:19
+INJECTED from /home/tom/Projekte/SEProjects/pocketsudo/android/deck/src/main/AndroidManifest.xml:8:5-78:19
 MERGED from [com.google.android.gms:play-services-code-scanner:16.1.0] /home/tom/.gradle/caches/8.14.5/transforms/194a5563ccc77c1feca0184de4d7499c/transformed/play-services-code-scanner-16.1.0/AndroidManifest.xml:8:5-21:19
 MERGED from [com.google.android.gms:play-services-code-scanner:16.1.0] /home/tom/.gradle/caches/8.14.5/transforms/194a5563ccc77c1feca0184de4d7499c/transformed/play-services-code-scanner-16.1.0/AndroidManifest.xml:8:5-21:19
 MERGED from [com.google.firebase:firebase-messaging:26.0.2] /home/tom/.gradle/caches/8.14.5/transforms/f690cf2c4095f6f22edc26c20b706c61/transformed/firebase-messaging-26.0.2/AndroidManifest.xml:28:5-64:19
@@ -209,7 +209,7 @@ ADDED from /home/tom/Projekte/SEProjects/pocketsudo/android/deck/src/main/Androi
 	android:scheme
 		ADDED from /home/tom/Projekte/SEProjects/pocketsudo/android/deck/src/main/AndroidManifest.xml:36:23-50
 	android:mimeType
-		ADDED from /home/tom/Projekte/SEProjects/pocketsudo/android/deck/src/main/AndroidManifest.xml:59:23-45
+		ADDED from /home/tom/Projekte/SEProjects/pocketsudo/android/deck/src/main/AndroidManifest.xml:63:23-45
 activity#de.raindancer118.pocketdeck.KeyboardActivity
 ADDED from /home/tom/Projekte/SEProjects/pocketsudo/android/deck/src/main/AndroidManifest.xml:40:9-43:58
 	android:windowSoftInputMode
@@ -218,48 +218,54 @@ ADDED from /home/tom/Projekte/SEProjects/pocketsudo/android/deck/src/main/Androi
 		ADDED from /home/tom/Projekte/SEProjects/pocketsudo/android/deck/src/main/AndroidManifest.xml:42:13-37
 	android:name
 		ADDED from /home/tom/Projekte/SEProjects/pocketsudo/android/deck/src/main/AndroidManifest.xml:41:13-45
-activity#de.raindancer118.pocketdeck.ScreenshotActivity
+activity#de.raindancer118.pocketdeck.FilesActivity
 ADDED from /home/tom/Projekte/SEProjects/pocketsudo/android/deck/src/main/AndroidManifest.xml:45:9-47:40
 	android:exported
 		ADDED from /home/tom/Projekte/SEProjects/pocketsudo/android/deck/src/main/AndroidManifest.xml:47:13-37
 	android:name
-		ADDED from /home/tom/Projekte/SEProjects/pocketsudo/android/deck/src/main/AndroidManifest.xml:46:13-47
+		ADDED from /home/tom/Projekte/SEProjects/pocketsudo/android/deck/src/main/AndroidManifest.xml:46:13-42
+activity#de.raindancer118.pocketdeck.ScreenshotActivity
+ADDED from /home/tom/Projekte/SEProjects/pocketsudo/android/deck/src/main/AndroidManifest.xml:49:9-51:40
+	android:exported
+		ADDED from /home/tom/Projekte/SEProjects/pocketsudo/android/deck/src/main/AndroidManifest.xml:51:13-37
+	android:name
+		ADDED from /home/tom/Projekte/SEProjects/pocketsudo/android/deck/src/main/AndroidManifest.xml:50:13-47
 activity#de.raindancer118.pocketdeck.ShareActivity
-ADDED from /home/tom/Projekte/SEProjects/pocketsudo/android/deck/src/main/AndroidManifest.xml:50:9-61:20
+ADDED from /home/tom/Projekte/SEProjects/pocketsudo/android/deck/src/main/AndroidManifest.xml:54:9-65:20
 	android:label
-		ADDED from /home/tom/Projekte/SEProjects/pocketsudo/android/deck/src/main/AndroidManifest.xml:54:13-49
+		ADDED from /home/tom/Projekte/SEProjects/pocketsudo/android/deck/src/main/AndroidManifest.xml:58:13-49
 	android:excludeFromRecents
-		ADDED from /home/tom/Projekte/SEProjects/pocketsudo/android/deck/src/main/AndroidManifest.xml:53:13-46
+		ADDED from /home/tom/Projekte/SEProjects/pocketsudo/android/deck/src/main/AndroidManifest.xml:57:13-46
 	android:exported
-		ADDED from /home/tom/Projekte/SEProjects/pocketsudo/android/deck/src/main/AndroidManifest.xml:52:13-36
+		ADDED from /home/tom/Projekte/SEProjects/pocketsudo/android/deck/src/main/AndroidManifest.xml:56:13-36
 	android:theme
-		ADDED from /home/tom/Projekte/SEProjects/pocketsudo/android/deck/src/main/AndroidManifest.xml:55:13-72
+		ADDED from /home/tom/Projekte/SEProjects/pocketsudo/android/deck/src/main/AndroidManifest.xml:59:13-72
 	android:name
-		ADDED from /home/tom/Projekte/SEProjects/pocketsudo/android/deck/src/main/AndroidManifest.xml:51:13-42
+		ADDED from /home/tom/Projekte/SEProjects/pocketsudo/android/deck/src/main/AndroidManifest.xml:55:13-42
 intent-filter#action:name:android.intent.action.SEND+category:name:android.intent.category.DEFAULT+data:mimeType:*/*
-ADDED from /home/tom/Projekte/SEProjects/pocketsudo/android/deck/src/main/AndroidManifest.xml:56:13-60:29
+ADDED from /home/tom/Projekte/SEProjects/pocketsudo/android/deck/src/main/AndroidManifest.xml:60:13-64:29
 action#android.intent.action.SEND
-ADDED from /home/tom/Projekte/SEProjects/pocketsudo/android/deck/src/main/AndroidManifest.xml:57:17-69
+ADDED from /home/tom/Projekte/SEProjects/pocketsudo/android/deck/src/main/AndroidManifest.xml:61:17-69
 	android:name
-		ADDED from /home/tom/Projekte/SEProjects/pocketsudo/android/deck/src/main/AndroidManifest.xml:57:25-66
+		ADDED from /home/tom/Projekte/SEProjects/pocketsudo/android/deck/src/main/AndroidManifest.xml:61:25-66
 service#de.raindancer118.pocketdeck.DeckPushService
-ADDED from /home/tom/Projekte/SEProjects/pocketsudo/android/deck/src/main/AndroidManifest.xml:63:9-69:19
+ADDED from /home/tom/Projekte/SEProjects/pocketsudo/android/deck/src/main/AndroidManifest.xml:67:9-73:19
 	android:exported
-		ADDED from /home/tom/Projekte/SEProjects/pocketsudo/android/deck/src/main/AndroidManifest.xml:65:13-37
+		ADDED from /home/tom/Projekte/SEProjects/pocketsudo/android/deck/src/main/AndroidManifest.xml:69:13-37
 	android:name
-		ADDED from /home/tom/Projekte/SEProjects/pocketsudo/android/deck/src/main/AndroidManifest.xml:64:13-44
+		ADDED from /home/tom/Projekte/SEProjects/pocketsudo/android/deck/src/main/AndroidManifest.xml:68:13-44
 intent-filter#action:name:com.google.firebase.MESSAGING_EVENT
-ADDED from /home/tom/Projekte/SEProjects/pocketsudo/android/deck/src/main/AndroidManifest.xml:66:13-68:29
+ADDED from /home/tom/Projekte/SEProjects/pocketsudo/android/deck/src/main/AndroidManifest.xml:70:13-72:29
 action#com.google.firebase.MESSAGING_EVENT
-ADDED from /home/tom/Projekte/SEProjects/pocketsudo/android/deck/src/main/AndroidManifest.xml:67:17-78
+ADDED from /home/tom/Projekte/SEProjects/pocketsudo/android/deck/src/main/AndroidManifest.xml:71:17-78
 	android:name
-		ADDED from /home/tom/Projekte/SEProjects/pocketsudo/android/deck/src/main/AndroidManifest.xml:67:25-75
+		ADDED from /home/tom/Projekte/SEProjects/pocketsudo/android/deck/src/main/AndroidManifest.xml:71:25-75
 meta-data#firebase_messaging_auto_init_enabled
-ADDED from /home/tom/Projekte/SEProjects/pocketsudo/android/deck/src/main/AndroidManifest.xml:71:9-73:37
+ADDED from /home/tom/Projekte/SEProjects/pocketsudo/android/deck/src/main/AndroidManifest.xml:75:9-77:37
 	android:value
-		ADDED from /home/tom/Projekte/SEProjects/pocketsudo/android/deck/src/main/AndroidManifest.xml:73:13-34
+		ADDED from /home/tom/Projekte/SEProjects/pocketsudo/android/deck/src/main/AndroidManifest.xml:77:13-34
 	android:name
-		ADDED from /home/tom/Projekte/SEProjects/pocketsudo/android/deck/src/main/AndroidManifest.xml:72:13-64
+		ADDED from /home/tom/Projekte/SEProjects/pocketsudo/android/deck/src/main/AndroidManifest.xml:76:13-64
 uses-sdk
 INJECTED from /home/tom/Projekte/SEProjects/pocketsudo/android/deck/src/main/AndroidManifest.xml reason: use-sdk injection requested
 INJECTED from /home/tom/Projekte/SEProjects/pocketsudo/android/deck/src/main/AndroidManifest.xml

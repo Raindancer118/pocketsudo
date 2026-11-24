@@ -49,6 +49,8 @@ func init() {
 		"type":           {session: true, fn: (*Agent).typeText},
 		"screenshot":     {session: true, fn: (*Agent).screenshot},
 		"file.put":       {fn: (*Agent).filePut},
+		"fs.list":        {session: true, fn: (*Agent).fsList},
+		"fs.get":         {session: true, fn: (*Agent).fsGet},
 	}
 }
 
@@ -586,9 +588,23 @@ func freePath(dir, name string) string {
 }
 
 func (a *Agent) filePut(ctx context.Context, body json.RawMessage) (json.RawMessage, error) {
-	var p struct{ Blob, Name string }
+	var p struct{ Blob, Name, Dir string }
 	if err := decode(body, &p); err != nil {
 		return nil, err
+	}
+	target := a.downloadDir
+	if p.Dir != "" {
+		if !a.sessionActive() {
+			return nil, errNeedsSession
+		}
+		dir, err := a.inHome(p.Dir)
+		if err != nil {
+			return nil, err
+		}
+		if fi, err := os.Stat(dir); err != nil || !fi.IsDir() {
+			return nil, errors.New("not a folder")
+		}
+		target = dir
 	}
 	var box []byte
 	if _, err := a.client.Raw(ctx, "GET", "/v1/channels/"+a.cfg.Channel+"/blobs/"+p.Blob, nil, &box); err != nil {
@@ -598,10 +614,10 @@ func (a *Agent) filePut(ctx context.Context, body json.RawMessage) (json.RawMess
 	if err != nil {
 		return nil, errors.New("file could not be decrypted")
 	}
-	if err := os.MkdirAll(a.downloadDir, 0o755); err != nil {
+	if err := os.MkdirAll(target, 0o755); err != nil {
 		return nil, err
 	}
-	path := freePath(a.downloadDir, cleanName(p.Name))
+	path := freePath(target, cleanName(p.Name))
 	f, err := os.OpenFile(path, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o644)
 	if err != nil {
 		return nil, err
@@ -613,4 +629,113 @@ func (a *Agent) filePut(ctx context.Context, body json.RawMessage) (json.RawMess
 	f.Close()
 	a.sys.Start(ctx, "notify-send", "-a", "PocketDeck", "Datei empfangen", filepath.Base(path))
 	return ok(map[string]string{"path": path})
+}
+
+// ---- file browser (home directory only) ----
+
+func homeDir() string {
+	h, _ := os.UserHomeDir()
+	return h
+}
+
+// inHome resolves a path relative to home (symlinks included) and refuses
+// anything that ends up outside of it.
+func (a *Agent) inHome(rel string) (string, error) {
+	home, err := filepath.EvalSymlinks(a.home)
+	if err != nil {
+		return "", err
+	}
+	if filepath.IsAbs(rel) {
+		return "", errors.New("paths are relative to your home folder")
+	}
+	for _, part := range strings.Split(filepath.ToSlash(rel), "/") {
+		if part == ".." {
+			return "", errors.New("outside your home folder")
+		}
+	}
+	p, err := filepath.EvalSymlinks(filepath.Join(home, filepath.Clean("/"+rel)))
+	if err != nil {
+		return "", errors.New("not found")
+	}
+	if p != home && !strings.HasPrefix(p, home+string(filepath.Separator)) {
+		return "", errors.New("outside your home folder")
+	}
+	return p, nil
+}
+
+type fsEntry struct {
+	Name  string `json:"name"`
+	Dir   bool   `json:"dir"`
+	Size  int64  `json:"size"`
+	MTime int64  `json:"mtime"`
+}
+
+func (a *Agent) fsList(_ context.Context, body json.RawMessage) (json.RawMessage, error) {
+	var p struct {
+		Path   string
+		Hidden bool
+	}
+	if err := decode(body, &p); err != nil {
+		return nil, err
+	}
+	dir, err := a.inHome(p.Path)
+	if err != nil {
+		return nil, err
+	}
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return nil, err
+	}
+	out := []fsEntry{}
+	for _, e := range entries {
+		if !p.Hidden && strings.HasPrefix(e.Name(), ".") {
+			continue
+		}
+		fi, err := os.Stat(filepath.Join(dir, e.Name())) // follows links for type and size
+		if err != nil {
+			continue
+		}
+		out = append(out, fsEntry{Name: e.Name(), Dir: fi.IsDir(), Size: fi.Size(), MTime: fi.ModTime().Unix()})
+	}
+	sort.Slice(out, func(i, j int) bool {
+		if out[i].Dir != out[j].Dir {
+			return out[i].Dir
+		}
+		return strings.ToLower(out[i].Name) < strings.ToLower(out[j].Name)
+	})
+	home, _ := filepath.EvalSymlinks(a.home)
+	rel, _ := filepath.Rel(home, dir)
+	if rel == "." {
+		rel = ""
+	}
+	return ok(map[string]any{"path": rel, "entries": out})
+}
+
+const maxDownload = 24 << 20
+
+func (a *Agent) fsGet(ctx context.Context, body json.RawMessage) (json.RawMessage, error) {
+	var p struct{ Path string }
+	if err := decode(body, &p); err != nil {
+		return nil, err
+	}
+	path, err := a.inHome(p.Path)
+	if err != nil {
+		return nil, err
+	}
+	fi, err := os.Stat(path)
+	if err != nil || fi.IsDir() {
+		return nil, errors.New("not a file")
+	}
+	if fi.Size() > maxDownload {
+		return nil, fmt.Errorf("file too large (%d MB, max 24 MB)", fi.Size()>>20)
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+	id, err := a.upload(ctx, data)
+	if err != nil {
+		return nil, err
+	}
+	return ok(map[string]any{"blob": id, "name": filepath.Base(path), "size": len(data)})
 }

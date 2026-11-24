@@ -43,6 +43,10 @@
             android:windowSoftInputMode="adjustResize" />
 
         <activity
+            android:name=".FilesActivity"
+            android:exported="false" />
+
+        <activity
             android:name=".ScreenshotActivity"
             android:exported="false" />
 

@@ -62,6 +62,34 @@
         severity="warning"
         message="">
         <location
+            file="${:deck*debug*MAIN*sourceProvider*0*resDir*0}/drawable/ic_folder.xml"
+            line="5"
+            column="30"
+            startOffset="386"
+            endLine="5"
+            endColumn="42"
+            endOffset="398"/>
+        <map>
+            <entry
+                name="containsFillType"
+                boolean="false"/>
+            <entry
+                name="containsGradient"
+                boolean="false"/>
+            <entry
+                name="folderVersion"
+                int="-1"/>
+            <entry
+                name="message"
+                string="Resource references will not work correctly in images generated for this vector icon for API &lt; %1$d; check generated icon to make sure it looks acceptable"/>
+        </map>
+    </incident>
+
+    <incident
+        id="VectorRaster"
+        severity="warning"
+        message="">
+        <location
             file="${:deck*debug*MAIN*sourceProvider*0*resDir*0}/drawable/ic_fp_big.xml"
             line="4"
             column="326"

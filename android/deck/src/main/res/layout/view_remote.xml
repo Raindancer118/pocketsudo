@@ -96,6 +96,8 @@
         <View android:layout_width="match_parent" android:layout_height="1px" android:background="@color/line" />
         <TextView android:id="@+id/keyboard" style="@style/Row" android:text="@string/open_keyboard" />
         <View android:layout_width="match_parent" android:layout_height="1px" android:background="@color/line" />
+        <TextView android:id="@+id/files" style="@style/Row" android:text="@string/files" />
+        <View android:layout_width="match_parent" android:layout_height="1px" android:background="@color/line" />
         <TextView android:id="@+id/send_file" style="@style/Row" android:text="@string/send_file" />
         <View android:layout_width="match_parent" android:layout_height="1px" android:background="@color/line" />
         <TextView android:id="@+id/screenshot" style="@style/Row" android:text="@string/screenshot" />

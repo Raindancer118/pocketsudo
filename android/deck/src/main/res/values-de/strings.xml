@@ -68,4 +68,10 @@
     <string name="screenshot_taking">Macht Bildschirmfoto …</string>
     <string name="screenshot_saved">In Bilder/PocketDeck gespeichert</string>
     <string name="needs_session">Öffne zuerst die Fernsteuerung unter Tastatur</string>
+    <string name="files">Dateien</string>
+    <string name="upload_here">Hier hochladen</string>
+    <string name="files_session_hint">Ein Fingerabdruck öffnet deinen Home-Ordner für 15 Minuten</string>
+    <string name="folder_empty">Leerer Ordner</string>
+    <string name="downloading">Lädt %1$s …</string>
+    <string name="downloaded">%1$s in Downloads/PocketDeck</string>
 </resources>

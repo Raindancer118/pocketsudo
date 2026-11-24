@@ -416,3 +416,70 @@ func (r *rig) awaitType(typ string) protocol.DeckMessage {
 	r.t.Fatalf("no %s message", typ)
 	return protocol.DeckMessage{}
 }
+
+func TestFileBrowser(t *testing.T) {
+	r := newRig(t)
+	home := t.TempDir()
+	r.agent.home = home
+	os.MkdirAll(filepath.Join(home, "Projekte"), 0o755)
+	os.WriteFile(filepath.Join(home, "notiz.txt"), []byte("inhalt"), 0o644)
+	os.WriteFile(filepath.Join(home, ".geheim"), []byte("x"), 0o644)
+	outside := t.TempDir()
+	os.WriteFile(filepath.Join(outside, "passwd"), []byte("root"), 0o644)
+	os.Symlink(outside, filepath.Join(home, "raus"))
+
+	if res := result(t, r.send("fs.list", map[string]string{"path": ""}, false)); res.OK {
+		t.Fatal("listing without a remote session")
+	}
+	result(t, r.send("session.open", nil, true))
+
+	res := result(t, r.send("fs.list", map[string]string{"path": ""}, false))
+	var ls struct {
+		Path    string
+		Entries []struct {
+			Name string
+			Dir  bool
+			Size int64
+		}
+	}
+	json.Unmarshal(res.Data, &ls)
+	names := map[string]bool{}
+	for _, e := range ls.Entries {
+		names[e.Name] = e.Dir
+	}
+	if !res.OK || !names["Projekte"] || names["notiz.txt"] || len(names) < 2 {
+		t.Fatalf("listing %+v %+v", res, ls)
+	}
+	if _, hidden := names[".geheim"]; hidden {
+		t.Fatal("hidden files listed by default")
+	}
+	for _, bad := range []string{"..", "../..", "/etc", "raus", "raus/passwd"} {
+		if res := result(t, r.send("fs.list", map[string]string{"path": bad}, false)); res.OK {
+			t.Fatalf("escaped home via %q", bad)
+		}
+		if res := result(t, r.send("fs.get", map[string]string{"path": bad}, false)); res.OK {
+			t.Fatalf("downloaded outside home via %q", bad)
+		}
+	}
+
+	res = result(t, r.send("fs.get", map[string]string{"path": "notiz.txt"}, false))
+	var got struct{ Blob, Name string }
+	json.Unmarshal(res.Data, &got)
+	var raw []byte
+	r.phone.Raw(context.Background(), "GET", "/v1/channels/"+r.channel+"/blobs/"+got.Blob, nil, &raw)
+	if plain, err := protocol.OpenBytes(r.key, raw); err != nil || string(plain) != "inhalt" || got.Name != "notiz.txt" {
+		t.Fatalf("download: %v %q %+v", err, plain, got)
+	}
+
+	box, _ := protocol.SealBytes(r.key, []byte("hochgeladen"))
+	var up protocol.BlobResp
+	r.phone.Raw(context.Background(), "PUT", "/v1/channels/"+r.channel+"/blobs", box, &up)
+	res = result(t, r.send("file.put", map[string]string{"blob": up.ID, "name": "neu.txt", "dir": "Projekte"}, false))
+	if b, _ := os.ReadFile(filepath.Join(home, "Projekte", "neu.txt")); !res.OK || string(b) != "hochgeladen" {
+		t.Fatalf("upload into folder: %+v", res)
+	}
+	r.phone.Raw(context.Background(), "PUT", "/v1/channels/"+r.channel+"/blobs", box, &up)
+	if res := result(t, r.send("file.put", map[string]string{"blob": up.ID, "name": "x", "dir": "raus"}, false)); res.OK {
+		t.Fatal("uploaded outside home")
+	}
+}
