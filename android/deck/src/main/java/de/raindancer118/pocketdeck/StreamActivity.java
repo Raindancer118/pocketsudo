@@ -37,7 +37,6 @@ import org.webrtc.VideoTrack;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 import de.raindancer118.pocketcore.DeckCrypto;
@@ -233,6 +232,26 @@ public class StreamActivity extends AppCompatActivity {
     private void start() {
         if (source.isEmpty()) return;
         pickerMessage.setText(R.string.stream_connecting);
+        // TURN credentials from the relay first (mobile networks), then connect
+        deck.io().execute(() -> {
+            List<PeerConnection.IceServer> ice = new ArrayList<>();
+            ice.add(PeerConnection.IceServer.builder("stun:stun.l.google.com:19302").createIceServer());
+            DeckStore.Pairing p = deck.pairing();
+            try {
+                JSONObject t = new de.raindancer118.pocketcore.Relay(p.relay, p.phoneToken).get("/v1/channels/" + p.channel + "/turn");
+                JSONArray urls = t.getJSONArray("urls");
+                List<String> list = new ArrayList<>();
+                for (int i = 0; i < urls.length(); i++) list.add(urls.getString(i));
+                ice.add(PeerConnection.IceServer.builder(list).setUsername(t.getString("username"))
+                        .setPassword(t.getString("credential")).createIceServer());
+            } catch (Exception ignored) {
+                // no TURN: direct connections still work on most networks
+            }
+            runOnUiThread(() -> connect(ice));
+        });
+    }
+
+    private void connect(List<PeerConnection.IceServer> ice) {
         egl = EglBase.create();
         PeerConnectionFactory.initialize(PeerConnectionFactory.InitializationOptions.builder(getApplicationContext())
                 .createInitializationOptions());
@@ -254,8 +273,7 @@ public class StreamActivity extends AppCompatActivity {
         });
         video.setScalingType(RendererCommon.ScalingType.SCALE_ASPECT_FIT);
 
-        PeerConnection.RTCConfiguration cfg = new PeerConnection.RTCConfiguration(Collections.singletonList(
-                PeerConnection.IceServer.builder("stun:stun.l.google.com:19302").createIceServer()));
+        PeerConnection.RTCConfiguration cfg = new PeerConnection.RTCConfiguration(ice);
         cfg.sdpSemantics = PeerConnection.SdpSemantics.UNIFIED_PLAN;
         pc = factory.createPeerConnection(cfg, new Observer());
         if (pc == null) {

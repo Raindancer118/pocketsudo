@@ -12,6 +12,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/Raindancer118/pocketsudo/protocol"
 	"github.com/pion/webrtc/v4"
 	"github.com/pion/webrtc/v4/pkg/media"
 	"github.com/pion/webrtc/v4/pkg/media/h264reader"
@@ -24,6 +25,19 @@ import (
 
 func defaultICE() []webrtc.ICEServer {
 	return []webrtc.ICEServer{{URLs: []string{"stun:stun.l.google.com:19302"}}}
+}
+
+// iceConfig adds the relay's TURN server (short-lived credentials) to STUN,
+// so mobile networks that block direct connections still work.
+func (a *Agent) iceConfig(ctx context.Context) []webrtc.ICEServer {
+	servers := append([]webrtc.ICEServer{}, a.iceServers...)
+	var c protocol.TurnCreds
+	tctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	if _, err := a.client.Do(tctx, "GET", "/v1/channels/"+a.cfg.Channel+"/turn", nil, &c); err == nil && len(c.URLs) > 0 {
+		servers = append(servers, webrtc.ICEServer{URLs: c.URLs, Username: c.Username, Credential: c.Credential})
+	}
+	return servers
 }
 
 type streamer struct {
@@ -164,7 +178,7 @@ func (a *Agent) streamStart(ctx context.Context, body json.RawMessage) (json.Raw
 	if err := me.RegisterDefaultCodecs(); err != nil {
 		return nil, err
 	}
-	pc, err := webrtc.NewAPI(webrtc.WithMediaEngine(me)).NewPeerConnection(webrtc.Configuration{ICEServers: a.iceServers})
+	pc, err := webrtc.NewAPI(webrtc.WithMediaEngine(me)).NewPeerConnection(webrtc.Configuration{ICEServers: a.iceConfig(ctx)})
 	if err != nil {
 		return nil, err
 	}
