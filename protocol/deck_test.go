@@ -2,8 +2,10 @@ package protocol
 
 import (
 	"crypto/ecdh"
+	"crypto/x509"
 	"encoding/base64"
 	"encoding/json"
+	"os"
 	"testing"
 	"time"
 )
@@ -125,3 +127,33 @@ func TestPairMACv2CoversKX(t *testing.T) {
 		t.Fatal("swapped key-exchange key accepted")
 	}
 }
+
+// TestWriteDeckVectors keeps android/core/src/test/resources/deck_vectors.json in
+// sync so the Java side is checked against what Go produces.
+func TestWriteDeckVectors(t *testing.T) {
+	path := "../android/core/src/test/resources/deck_vectors.json"
+	if os.Getenv("UPDATE_VECTORS") == "" {
+		t.Skip("run with UPDATE_VECTORS=1 to regenerate")
+	}
+	phoneKX, _ := GenerateKX()
+	hostKX, _ := GenerateKX()
+	phonePKCS8, _ := x509.MarshalPKCS8PrivateKey(phoneKX)
+	hostPub, _ := EncodeKXPublic(hostKX.PublicKey())
+	key, _ := DeckKey(hostKX, mustEnc(EncodeKXPublic(phoneKX.PublicKey())), "chan-1")
+	m := DeckMessage{ID: "abc123", Type: "volume.set", TS: 1800000000, Body: json.RawMessage(`{"percent":40}`)}
+	box, _ := SealMessage(key, m, time.Unix(1800000000, 0))
+	signer, _ := GenerateKey()
+	signerPub, _ := EncodePublicKey(&signer.PublicKey)
+	m.Sig, _ = SignDeckAuth(signer, m)
+	out := map[string]string{
+		"phone_kx_pkcs8": base64.StdEncoding.EncodeToString(phonePKCS8), "host_kx_pub": hostPub,
+		"channel": "chan-1", "key_b64": base64.StdEncoding.EncodeToString(key), "box": box,
+		"auth_msg": string(DeckAuthMessage(m)), "auth_sig": m.Sig, "auth_pub": signerPub,
+	}
+	data, _ := json.MarshalIndent(out, "", "  ")
+	if err := os.WriteFile(path, data, 0o644); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func mustEnc(s string, _ error) string { return s }

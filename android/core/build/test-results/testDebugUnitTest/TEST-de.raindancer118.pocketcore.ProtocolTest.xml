@@ -1,14 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="de.raindancer118.pocketcore.ProtocolTest" tests="8" skipped="0" failures="0" errors="0" timestamp="2026-11-24T01:31:08.711Z" hostname="Eclipse" time="0.111">
+<testsuite name="de.raindancer118.pocketcore.ProtocolTest" tests="8" skipped="0" failures="0" errors="0" timestamp="2026-11-24T01:35:48.225Z" hostname="Eclipse" time="0.014">
   <properties/>
-  <testcase name="hostSignatureVerifies" classname="de.raindancer118.pocketcore.ProtocolTest" time="0.081"/>
+  <testcase name="hostSignatureVerifies" classname="de.raindancer118.pocketcore.ProtocolTest" time="0.004"/>
   <testcase name="promptContextShortensHome" classname="de.raindancer118.pocketcore.ProtocolTest" time="0.001"/>
-  <testcase name="tamperedPayloadIsRejected" classname="de.raindancer118.pocketcore.ProtocolTest" time="0.005"/>
-  <testcase name="pairingValuesMatchGo" classname="de.raindancer118.pocketcore.ProtocolTest" time="0.014"/>
-  <testcase name="responseMessageMatchesGo" classname="de.raindancer118.pocketcore.ProtocolTest" time="0.002"/>
-  <testcase name="pairUriIsParsed" classname="de.raindancer118.pocketcore.ProtocolTest" time="0.001"/>
-  <testcase name="groupCodeSplitsSixDigits" classname="de.raindancer118.pocketcore.ProtocolTest" time="0.0"/>
-  <testcase name="javaSignatureIsWhatGoExpects" classname="de.raindancer118.pocketcore.ProtocolTest" time="0.005"/>
+  <testcase name="tamperedPayloadIsRejected" classname="de.raindancer118.pocketcore.ProtocolTest" time="0.003"/>
+  <testcase name="pairingValuesMatchGo" classname="de.raindancer118.pocketcore.ProtocolTest" time="0.001"/>
+  <testcase name="responseMessageMatchesGo" classname="de.raindancer118.pocketcore.ProtocolTest" time="0.0"/>
+  <testcase name="pairUriIsParsed" classname="de.raindancer118.pocketcore.ProtocolTest" time="0.0"/>
+  <testcase name="groupCodeSplitsSixDigits" classname="de.raindancer118.pocketcore.ProtocolTest" time="0.001"/>
+  <testcase name="javaSignatureIsWhatGoExpects" classname="de.raindancer118.pocketcore.ProtocolTest" time="0.003"/>
   <system-out><![CDATA[]]></system-out>
   <system-err><![CDATA[]]></system-err>
 </testsuite>
