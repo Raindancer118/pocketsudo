@@ -11,6 +11,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net"
 	"net/http"
@@ -93,6 +94,10 @@ func New(opts Options) (*Server, error) {
 	s := &Server{opts: opts, log: opts.Logger, channels: map[string]*channel{},
 		requests: map[string]*pending{}, pairWait: map[string]chan struct{}{}, limiter: newLimiter(20, time.Minute)}
 	if err := s.load(); err != nil {
+		return nil, err
+	}
+	// Fail loudly now instead of pairing in memory and losing it on restart.
+	if err := checkWritable(opts.DataDir); err != nil {
 		return nil, err
 	}
 	m := http.NewServeMux()
@@ -195,6 +200,16 @@ func (s *Server) saveLocked() {
 	if err := os.Rename(tmp, s.file()); err != nil {
 		s.log.Error("save channels", "err", err)
 	}
+}
+
+func checkWritable(dir string) error {
+	f, err := os.CreateTemp(dir, ".write-check-*")
+	if err != nil {
+		return fmt.Errorf("data dir %s not writable: %w", dir, err)
+	}
+	name := f.Name()
+	f.Close()
+	return os.Remove(name)
 }
 
 // ---- helpers ----

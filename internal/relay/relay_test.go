@@ -9,6 +9,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"path/filepath"
 	"sync"
 	"testing"
@@ -330,5 +331,21 @@ func TestUnsignedDenyIsAccepted(t *testing.T) {
 	}
 	if c := e.do("POST", "/v1/channels/"+e.ch+"/requests/"+id+"/response", e.phoneT, protocol.Response{Decision: protocol.DecisionApprove}, nil); c != 400 && c != 409 {
 		t.Fatalf("unsigned approve accepted: %d", c)
+	}
+}
+
+// A relay that cannot persist pairings must refuse to start: otherwise it
+// pairs happily and forgets everything on the next restart (happened 24.11.2026).
+func TestNewFailsWithoutWritableDataDir(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.Chmod(dir, 0o500); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { os.Chmod(dir, 0o700) })
+	if os.Geteuid() == 0 {
+		t.Skip("root can write anywhere")
+	}
+	if _, err := New(Options{DataDir: dir, Logger: quiet}); err == nil {
+		t.Fatal("relay started without a writable data dir")
 	}
 }
