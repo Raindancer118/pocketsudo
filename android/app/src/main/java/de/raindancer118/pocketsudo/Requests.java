@@ -6,6 +6,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.os.Build;
 import android.util.Log;
+import android.widget.RemoteViews;
 
 import androidx.core.app.NotificationCompat;
 
@@ -125,16 +126,30 @@ public final class Requests {
      * for messages that lead to a visible notification right away.
      */
     static void notifyPlaceholder(Context ctx, Store.Pairing p, String id) {
-        show(ctx, p, id, ctx.getString(R.string.notif_from, p.hostname), ctx.getString(R.string.notif_loading), 120);
+        show(ctx, p, id, ctx.getString(R.string.notif_from, p.hostname), ctx.getString(R.string.notif_loading), 120, null);
     }
 
+    /** Large layout: the command is readable in the heads-up already, the code fills the expanded view. */
     static void notifyRequest(Context ctx, Store.Pairing p, Protocol.Request r) {
+        if (App.HANDLED.contains(r.id)) return;
         String title = ctx.getString(R.string.notif_title, r.service, r.hostname);
-        String text = "$ " + r.command + "   ·   " + ctx.getString(R.string.notif_code, r.code);
-        show(ctx, p, r.id, title, text, Math.max(1, r.secondsLeft()));
+        String cmd = "$ " + (r.command.isEmpty() ? r.service : r.command);
+        String text = cmd + "   ·   " + ctx.getString(R.string.notif_code, r.code);
+        String head = r.remote ? title + "  ·  " + ctx.getString(R.string.ssh) : title;
+
+        RemoteViews small = new RemoteViews(ctx.getPackageName(), R.layout.notif_small);
+        small.setTextViewText(R.id.n_title, head + "  ·  " + ctx.getString(R.string.notif_code, r.code));
+        small.setTextViewText(R.id.n_command, cmd);
+        RemoteViews big = new RemoteViews(ctx.getPackageName(), R.layout.notif_big);
+        big.setTextViewText(R.id.n_title, head);
+        big.setTextViewText(R.id.n_command, cmd);
+        big.setTextViewText(R.id.n_code, r.code);
+        big.setTextViewText(R.id.n_hint, ctx.getString(R.string.code_hint));
+        show(ctx, p, r.id, title, text, Math.max(1, r.secondsLeft()), new RemoteViews[]{small, big});
     }
 
-    private static void show(Context ctx, Store.Pairing p, String id, String title, String text, long seconds) {
+    private static void show(Context ctx, Store.Pairing p, String id, String title, String text, long seconds,
+                             RemoteViews[] custom) {
         int nid = notificationId(id);
         int flags = PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE;
         PendingIntent open = PendingIntent.getActivity(ctx, nid, approvalIntent(ctx, p.channel, id), flags);
@@ -145,7 +160,8 @@ public final class Requests {
                 .setSmallIcon(R.drawable.ic_notify)
                 .setContentTitle(title)
                 .setContentText(text)
-                .setStyle(new NotificationCompat.BigTextStyle().bigText(text))
+                .setStyle(custom == null ? new NotificationCompat.BigTextStyle().bigText(text)
+                        : new NotificationCompat.DecoratedCustomViewStyle())
                 .setPriority(NotificationCompat.PRIORITY_MAX)
                 .setCategory(NotificationCompat.CATEGORY_CALL)
                 .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
@@ -155,6 +171,12 @@ public final class Requests {
                 .setContentIntent(open)
                 .addAction(0, ctx.getString(R.string.deny), deny)
                 .addAction(0, ctx.getString(R.string.approve), open);
+        // lock screen: host only, the command stays private until unlocked
+        b.setPublicVersion(new NotificationCompat.Builder(ctx, App.CHANNEL_REQUESTS)
+                .setSmallIcon(R.drawable.ic_notify).setContentTitle(title).build());
+        if (custom != null) {
+            b.setCustomContentView(custom[0]).setCustomHeadsUpContentView(custom[0]).setCustomBigContentView(custom[1]);
+        }
         NotificationManager nm = ctx.getSystemService(NotificationManager.class);
         if (Build.VERSION.SDK_INT < 34 || nm.canUseFullScreenIntent()) b.setFullScreenIntent(open, true);
         try {

@@ -57,12 +57,28 @@
             android:textSize="14sp"
             android:visibility="gone" />
 
-        <TextView
-            android:id="@+id/code"
-            style="@style/Text.Code"
+        <!-- the code, replaced by the drawn check once approved -->
+        <FrameLayout
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="40dp" />
+            android:layout_marginTop="40dp">
+
+            <TextView
+                android:id="@+id/code"
+                style="@style/Text.Code"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center" />
+
+            <ImageView
+                android:id="@+id/check"
+                android:layout_width="72dp"
+                android:layout_height="72dp"
+                android:layout_gravity="center"
+                android:importantForAccessibility="no"
+                android:src="@drawable/check_anim"
+                android:visibility="invisible" />
+        </FrameLayout>
 
         <TextView
             android:id="@+id/code_hint"

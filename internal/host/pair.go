@@ -56,13 +56,9 @@ func Pair(ctx context.Context, cfg *Config, relay, hostname string, ui PairUI) (
 	uri := PairURI(relay, created.Channel, secret, fp, hostname)
 
 	if ui.ShowQR == nil {
-		ui.ShowQR = func(uri string) {
-			qrterminal.GenerateWithConfig(uri, qrterminal.Config{Level: qrterminal.L, Writer: ui.Out,
-				HalfBlocks: true, BlackChar: qrterminal.BLACK_BLACK, WhiteChar: qrterminal.WHITE_WHITE,
-				BlackWhiteChar: qrterminal.BLACK_WHITE, WhiteBlackChar: qrterminal.WHITE_BLACK, QuietZone: 2})
-		}
+		ui.ShowQR = func(uri string) { RenderQR(ui.Out, uri) }
 	}
-	fmt.Fprintln(ui.Out, "Scan this with the PocketSudo app (tap + on the main screen):")
+	fmt.Fprintln(ui.Out, "Scan this with the phone camera or in the PocketSudo app (Scan code):")
 	ui.ShowQR(uri)
 	fmt.Fprintln(ui.Out, "Waiting for the phone (10 minutes)…")
 
@@ -124,4 +120,11 @@ func Unpair(ctx context.Context, cfg *Config, p Pairing) error {
 	}
 	cfg.Pairings = out
 	return cfg.Save()
+}
+
+// RenderQR prints uri as a QR code made of half blocks.
+func RenderQR(w io.Writer, uri string) {
+	qrterminal.GenerateWithConfig(uri, qrterminal.Config{Level: qrterminal.L, Writer: w,
+		HalfBlocks: true, BlackChar: qrterminal.BLACK_BLACK, WhiteChar: qrterminal.WHITE_WHITE,
+		BlackWhiteChar: qrterminal.BLACK_WHITE, WhiteBlackChar: qrterminal.WHITE_BLACK, QuietZone: 2})
 }

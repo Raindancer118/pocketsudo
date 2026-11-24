@@ -21,7 +21,7 @@ var version = "dev"
 
 const usage = `pocketsudo – approve sudo with your phone's fingerprint
 
-  pocketsudo pair [--relay URL] [--name NAME]   pair a phone (QR code)
+  pocketsudo pair [--relay URL] [--name NAME] [--print-uri]  pair a phone (QR code)
   pocketsudo status                            show pairings and PAM state
   pocketsudo test                              send a test request to your phone
   pocketsudo unpair NAME|CHANNEL               remove a phone
@@ -120,6 +120,7 @@ func runPair(args []string) error {
 	fs := flag.NewFlagSet("pair", flag.ExitOnError)
 	relay := fs.String("relay", host.DefaultRelay, "relay URL")
 	name := fs.String("name", hostname(), "name shown on the phone")
+	printURI := fs.Bool("print-uri", false, "also print the pairing link (open it on the phone instead of scanning)")
 	fs.Parse(args)
 	cfg, err := host.LoadConfig()
 	if err != nil {
@@ -128,7 +129,13 @@ func runPair(args []string) error {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer stop()
 	in := bufio.NewReader(os.Stdin)
-	p, err := host.Pair(ctx, cfg, strings.TrimRight(*relay, "/"), *name, host.PairUI{Out: os.Stdout,
+	showQR := func(uri string) {
+		host.RenderQR(os.Stdout, uri)
+		if *printURI {
+			fmt.Println(uri)
+		}
+	}
+	p, err := host.Pair(ctx, cfg, strings.TrimRight(*relay, "/"), *name, host.PairUI{Out: os.Stdout, ShowQR: showQR,
 		Confirm: func(device, code string) bool {
 			fmt.Printf("\n%q wants to pair.\nVerification code: %s %s\nDoes the phone show the same code? [y/N] ",
 				device, code[:3], code[3:])

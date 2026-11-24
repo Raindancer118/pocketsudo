@@ -7,7 +7,12 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.security.keystore.KeyPermanentlyInvalidatedException;
+import android.graphics.drawable.Animatable;
+import android.view.HapticFeedbackConstants;
 import android.view.View;
+import android.view.animation.AnimationUtils;
+import android.view.animation.Interpolator;
+import android.widget.ImageView;
 import android.view.animation.LinearInterpolator;
 import android.widget.TextView;
 
@@ -63,11 +68,20 @@ public class ApprovalActivity extends AppCompatActivity implements App.CancelLis
         super.onNewIntent(intent);
         setIntent(intent);
         finished = false;
+        deny.setText(R.string.deny);
+        deny.setOnClickListener(v -> sendDeny());
+        approve.setVisibility(View.VISIBLE);
+        approve.setAlpha(1f);
+        code.setVisibility(View.VISIBLE);
+        code.setAlpha(1f);
+        codeHint.setAlpha(1f);
+        findViewById(R.id.check).setVisibility(View.INVISIBLE);
         load(intent);
     }
 
     @Override
     protected void onDestroy() {
+        if (request != null) Requests.cancelNotification(this, request.id);
         App.removeCancelListener(this);
         if (countdown != null) countdown.cancel();
         main.removeCallbacksAndMessages(null);
@@ -105,6 +119,7 @@ public class ApprovalActivity extends AppCompatActivity implements App.CancelLis
     private void show(Protocol.Request r) {
         if (finished) return;
         request = r;
+        App.HANDLED.add(r.id);
         Requests.cancelNotification(this, r.id);
         context.setText(getString(R.string.service_on_host, r.service, r.hostname));
         command.setText(Ui.prompt(this, r.command.isEmpty() ? r.service : r.command));
@@ -219,7 +234,7 @@ public class ApprovalActivity extends AppCompatActivity implements App.CancelLis
                 Requests.approve(pairing, r, signature);
                 App.SEEN.remove(r.id);
                 store.record(r, Store.OUT_APPROVED);
-                runOnUiThread(() -> end(getString(R.string.approved), R.drawable.dot_live, () -> finishAndRemoveTask()));
+                runOnUiThread(() -> success(r));
             } catch (Relay.HttpException e) {
                 runOnUiThread(() -> end(getString(e.code == 410 ? R.string.decided_elsewhere : R.string.send_failed),
                         R.drawable.dot_off, null));
@@ -230,6 +245,55 @@ public class ApprovalActivity extends AppCompatActivity implements App.CancelLis
                 });
             }
         });
+    }
+
+    /**
+     * The moment: the prompt turns into a root prompt, the countdown line fills,
+     * the code becomes a drawn check. Then the screen gets out of the way.
+     */
+    private void success(Protocol.Request r) {
+        finished = true;
+        if (countdown != null) countdown.cancel();
+        main.removeCallbacksAndMessages(null);
+        View root = findViewById(R.id.root);
+        root.performHapticFeedback(HapticFeedbackConstants.CONFIRM);
+        boolean motion = ValueAnimator.areAnimatorsEnabled();
+        Interpolator ease = AnimationUtils.loadInterpolator(this, R.interpolator.ease_out);
+        String cmd = r.command.isEmpty() ? r.service : r.command;
+
+        bar.setBackgroundColor(getColor(R.color.live));
+        status.setVisibility(View.GONE);
+        ImageView check = findViewById(R.id.check);
+        if (!motion) {
+            bar.setScaleX(1f);
+            command.setText(Ui.prompt(this, "#", cmd));
+            code.setVisibility(View.INVISIBLE);
+            codeHint.setVisibility(View.INVISIBLE);
+            approve.setVisibility(View.INVISIBLE);
+            deny.setVisibility(View.INVISIBLE);
+            check.setVisibility(View.VISIBLE);
+            ((Animatable) check.getDrawable()).start();
+            showStatus(getString(R.string.approved), R.drawable.dot_live);
+            main.postDelayed(this::finishAndRemoveTask, 1400);
+            return;
+        }
+        bar.animate().scaleX(1f).setDuration(260).setInterpolator(ease).start();
+        command.animate().alpha(0f).setDuration(100).withEndAction(() -> {
+            command.setText(Ui.prompt(this, "#", cmd));
+            command.animate().alpha(1f).setDuration(200).setInterpolator(ease).start();
+        }).start();
+        for (View v : new View[]{code, codeHint, approve, deny}) {
+            v.animate().alpha(0f).setDuration(160).setInterpolator(ease)
+                    .withEndAction(() -> v.setVisibility(View.INVISIBLE)).start();
+        }
+        main.postDelayed(() -> {
+            check.setVisibility(View.VISIBLE);
+            ((Animatable) check.getDrawable()).start();
+            showStatus(getString(R.string.approved), R.drawable.dot_live);
+            status.setAlpha(0f);
+            status.animate().alpha(1f).setDuration(260).setInterpolator(ease).start();
+        }, 140);
+        main.postDelayed(this::finishAndRemoveTask, 1700);
     }
 
     // ---- deny ----
@@ -271,9 +335,14 @@ public class ApprovalActivity extends AppCompatActivity implements App.CancelLis
         if (countdown != null) countdown.cancel();
         main.removeCallbacksAndMessages(null);
         approve.setVisibility(View.INVISIBLE);
-        deny.setVisibility(View.INVISIBLE);
         codeHint.setVisibility(request == null ? View.GONE : View.VISIBLE);
+        if (request != null) Requests.cancelNotification(this, request.id);
         showStatus(text, dot);
+        // the deny link becomes the way out
+        deny.setText(R.string.close);
+        deny.setEnabled(true);
+        deny.setVisibility(View.VISIBLE);
+        deny.setOnClickListener(v -> finishAndRemoveTask());
         if (after != null) main.postDelayed(after, 1200);
     }
 }

@@ -25,7 +25,11 @@ public final class Ui {
 
     /** "$ command" with the prompt sign dimmed, the way the terminal shows it. */
     public static CharSequence prompt(Context ctx, String command) {
-        SpannableStringBuilder sb = new SpannableStringBuilder("$ ");
+        return prompt(ctx, "$", command);
+    }
+
+    public static CharSequence prompt(Context ctx, String sign, String command) {
+        SpannableStringBuilder sb = new SpannableStringBuilder(sign + " ");
         sb.setSpan(new ForegroundColorSpan(ctx.getColor(R.color.text3)), 0, 1, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
         // non-breaking hyphen keeps "--since" in one piece when the line wraps
         sb.append(command.replace('-', '‑'));

@@ -30,6 +30,7 @@
     <string name="send_failed">Nicht gesendet, Verbindung prüfen und erneut versuchen</string>
     <string name="gone">Die Anfrage existiert nicht mehr</string>
     <string name="bio_title">%1$s auf %2$s freigeben</string>
+    <string name="close">Schließen</string>
     <string name="cancel">Abbrechen</string>
     <string name="bad_signature">Anfrage mit ungültiger Signatur verworfen</string>
     <string name="pair_connecting">Verbindet mit %1$s …</string>

@@ -19,6 +19,9 @@ public class App extends Application {
     /** Requests seen by this process, so a cancel push can be written to the history. */
     static final Map<String, Protocol.Request> SEEN = new ConcurrentHashMap<>();
 
+    /** Requests open on screen or decided; their notification must not come back. */
+    static final java.util.Set<String> HANDLED = ConcurrentHashMap.newKeySet();
+
     public interface CancelListener {
         void onCancelled(String requestId);
     }
