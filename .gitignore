@@ -4,6 +4,8 @@
 android/.gradle/
 android/build/
 android/*/build/
+# Gradle/Android build output anywhere (dex, classes.jar, intermediates, reports, stash-dir)
+build/
 android/local.properties
 Project.md
 .idea/
