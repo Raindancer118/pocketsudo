@@ -67,7 +67,7 @@ final class Transfer {
         ContentValues v = new ContentValues();
         v.put(MediaStore.Images.Media.DISPLAY_NAME, host + "-" + System.currentTimeMillis() + ".jpg");
         v.put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg");
-        v.put(MediaStore.Images.Media.RELATIVE_PATH, Environment.DIRECTORY_PICTURES + "/PocketDeck");
+        v.put(MediaStore.Images.Media.RELATIVE_PATH, Environment.DIRECTORY_PICTURES + "/PocketHub");
         Uri uri = ctx.getContentResolver().insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, v);
         if (uri == null) throw new IOException("gallery not available");
         try (OutputStream out = ctx.getContentResolver().openOutputStream(uri)) {
@@ -82,7 +82,7 @@ final class Transfer {
         ContentValues v = new ContentValues();
         v.put(MediaStore.Downloads.DISPLAY_NAME, name);
         v.put(MediaStore.Downloads.MIME_TYPE, mime(name));
-        v.put(MediaStore.Downloads.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS + "/PocketDeck");
+        v.put(MediaStore.Downloads.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS + "/PocketHub");
         Uri uri = ctx.getContentResolver().insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, v);
         if (uri == null) throw new IOException("downloads not available");
         try (OutputStream out = ctx.getContentResolver().openOutputStream(uri)) {

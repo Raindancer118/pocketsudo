@@ -96,7 +96,7 @@
             android:name=".ScreenshotActivity"
             android:exported="false" />
 
-        <!-- Share → PocketDeck: text to the computer clipboard, files to its downloads -->
+        <!-- Share → PocketHub: text to the computer clipboard, files to its downloads -->
         <activity
             android:name=".ShareActivity"
             android:exported="true"

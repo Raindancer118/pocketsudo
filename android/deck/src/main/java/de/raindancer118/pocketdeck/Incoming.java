@@ -16,7 +16,7 @@ import org.json.JSONObject;
 /**
  * Files the computer sends ("pocketdeck send"). Nothing is stored until Tom
  * accepts: the offer shows as a notification with Accept / Decline; only then
- * the file is downloaded to Downloads/PocketDeck and a second notification opens it.
+ * the file is downloaded to Downloads/PocketHub and a second notification opens it.
  * Unanswered offers simply expire on the relay after 15 minutes.
  */
 public final class Incoming extends BroadcastReceiver {

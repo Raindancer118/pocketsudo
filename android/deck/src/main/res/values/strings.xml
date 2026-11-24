@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name" translatable="false">PocketDeck</string>
+    <string name="app_name" translatable="false">PocketHub</string>
     <string name="tab_start">Start</string>
     <string name="tab_remote">Remote</string>
     <string name="theme_toggle">Switch light and dark</string>
@@ -33,7 +33,7 @@
     <string name="no_link">No link in the clipboard</string>
     <string name="no_biometric">Set up a fingerprint on this phone first</string>
     <string name="key_invalid">Fingerprints changed – pair again</string>
-    <string name="not_a_code">Not a PocketDeck code</string>
+    <string name="not_a_code">Not a PocketHub code</string>
     <string name="pair_insecure">The relay must use https</string>
     <string name="pair_connecting">Connecting to %1$s …</string>
     <string name="pair_compare">Same code in the terminal?</string>
@@ -59,14 +59,14 @@
     <string name="file_sending">Sending file …</string>
     <string name="file_too_large">File too large (max. 24 MB)</string>
     <string name="screenshot_taking">Taking screenshot …</string>
-    <string name="screenshot_saved">Saved in Pictures/PocketDeck</string>
+    <string name="screenshot_saved">Saved in Pictures/PocketHub</string>
     <string name="needs_session">Open remote control with your fingerprint first</string>
     <string name="files">Files</string>
     <string name="upload_here">Upload here</string>
     <string name="files_session_hint">One fingerprint opens your home folder for 15 minutes</string>
     <string name="folder_empty">Empty folder</string>
     <string name="downloading">Downloading %1$s …</string>
-    <string name="downloaded">%1$s in Downloads/PocketDeck</string>
+    <string name="downloaded">%1$s in Downloads/PocketHub</string>
     <string name="tile_keyboard">Keyboard</string>
     <string name="tile_files">Files</string>
     <string name="tile_screenshot">Screenshot</string>

@@ -193,7 +193,7 @@ final class Deck {
             if (text.isEmpty()) return;
             // writing the clipboard is allowed in the background, only reading is not
             main.post(() -> ctx.getSystemService(android.content.ClipboardManager.class)
-                    .setPrimaryClip(android.content.ClipData.newPlainText("PocketDeck", text)));
+                    .setPrimaryClip(android.content.ClipData.newPlainText("PocketHub", text)));
         }
     }
 

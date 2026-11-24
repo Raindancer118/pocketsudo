@@ -31,7 +31,7 @@
     <string name="no_link">Kein Link in der Zwischenablage</string>
     <string name="no_biometric">Richte zuerst einen Fingerabdruck auf diesem Handy ein</string>
     <string name="key_invalid">Fingerabdrücke geändert – neu koppeln</string>
-    <string name="not_a_code">Kein PocketDeck-Code</string>
+    <string name="not_a_code">Kein PocketHub-Code</string>
     <string name="pair_insecure">Das Relay muss https verwenden</string>
     <string name="pair_connecting">Verbindet mit %1$s …</string>
     <string name="pair_compare">Steht derselbe Code im Terminal?</string>
@@ -57,14 +57,14 @@
     <string name="file_sending">Sendet Datei …</string>
     <string name="file_too_large">Datei zu groß (max. 24 MB)</string>
     <string name="screenshot_taking">Macht Screenshots …</string>
-    <string name="screenshot_saved">In Bilder/PocketDeck gespeichert</string>
+    <string name="screenshot_saved">In Bilder/PocketHub gespeichert</string>
     <string name="needs_session">Öffne zuerst die Fernsteuerung mit deinem Fingerabdruck</string>
     <string name="files">Dateien</string>
     <string name="upload_here">Hier hochladen</string>
     <string name="files_session_hint">Ein Fingerabdruck öffnet deinen Home-Ordner für 15 Minuten</string>
     <string name="folder_empty">Leerer Ordner</string>
     <string name="downloading">Lädt %1$s …</string>
-    <string name="downloaded">%1$s in Downloads/PocketDeck</string>
+    <string name="downloaded">%1$s in Downloads/PocketHub</string>
     <string name="tile_keyboard">Tastatur</string>
     <string name="tile_files">Dateien</string>
     <string name="tile_screenshot">Screenshot</string>

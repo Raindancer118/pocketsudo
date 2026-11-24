@@ -470,7 +470,7 @@ public class MainActivity extends AppCompatActivity {
             }
             try {
                 String text = new JSONObject(data).getString("text");
-                getSystemService(ClipboardManager.class).setPrimaryClip(ClipData.newPlainText("PocketDeck", text));
+                getSystemService(ClipboardManager.class).setPrimaryClip(ClipData.newPlainText("PocketHub", text));
                 say(remoteMessage, getString(R.string.clip_got));
             } catch (JSONException e) {
                 say(remoteMessage, e.getMessage());
