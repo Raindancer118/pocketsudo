@@ -1,14 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/stream_root"
+    tools:ignore="MergeRootFrame"
     android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    android:background="#000000">
+    android:layout_height="match_parent">
 
-    <!-- wrap_content + centre: the renderer sizes itself to the picture (fit, no crop) -->
+    <!-- starts full size so the surface exists; fitVideo() then shrinks it to the picture -->
     <org.webrtc.SurfaceViewRenderer
         android:id="@+id/video"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
         android:layout_gravity="center" />
 
     <!-- touch layer above the video -->
