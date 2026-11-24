@@ -60,6 +60,8 @@ func init() {
 		"stream.start":   {session: true, fn: (*Agent).streamStart},
 		"stream.stop":    {fn: (*Agent).streamStop},
 		"monitors.list":  {fn: (*Agent).monitorsList},
+		"cameras.list":   {fn: (*Agent).camerasList},
+		"stream.switch":  {session: true, fn: (*Agent).streamSwitch},
 	}
 }
 

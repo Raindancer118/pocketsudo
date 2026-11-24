@@ -130,11 +130,7 @@ func TestScreenStream(t *testing.T) {
 }
 
 func TestCameraNeedsFingerEvenWithSession(t *testing.T) {
-	r := newRig(t)
-	r.agent.iceServers = nil
-	r.sys.pipe = func(name string, args ...string) io.ReadCloser {
-		return io.NopCloser(bytes.NewReader(annexB(10)))
-	}
+	r := cameraRig(t)
 	result(t, r.send("session.open", nil, true))
 	pc, _, _ := newViewer(t)
 	body := map[string]string{"offer": pc.LocalDescription().SDP, "source": "camera", "audio": "none"}
@@ -163,5 +159,71 @@ func TestMonitorsList(t *testing.T) {
 	json.Unmarshal(res.Data, &ms)
 	if !res.OK || len(ms) != 2 || ms[0].Name != "DP-8" {
 		t.Fatalf("monitors left to right expected: %+v %+v", res, ms)
+	}
+}
+
+const v4l2Devices = `Integrated Camera: Integrated C (usb-0000:00:14.0-8):
+	/dev/video0
+	/dev/video1
+	/dev/video2
+	/dev/video3
+	/dev/media0
+
+USB 2.0 Camera: USB Camera (usb-0000:2f:00.0-2.3):
+	/dev/video4
+	/dev/video5
+	/dev/media2
+`
+
+func cameraRig(t *testing.T) *rig {
+	r := newRig(t)
+	r.agent.iceServers = nil
+	r.sys.out["v4l2-ctl --list-devices"] = v4l2Devices
+	r.sys.out["v4l2-ctl -d /dev/video0 --list-formats"] = "[0]: 'MJPG' (Motion-JPEG, compressed)"
+	r.sys.out["v4l2-ctl -d /dev/video2 --list-formats"] = "[0]: 'GREY' (8-bit Greyscale)"
+	r.sys.out["v4l2-ctl -d /dev/video4 --list-formats"] = "[0]: 'MJPG' (Motion-JPEG, compressed)"
+	r.sys.out["hyprctl monitors -j"] = `[{"name":"eDP-1","x":0,"y":0,"width":1920,"height":1080,"scale":1}]`
+	r.sys.pipe = func(name string, args ...string) io.ReadCloser { return &liveFeed{left: 300} }
+	return r
+}
+
+func TestCamerasList(t *testing.T) {
+	r := cameraRig(t)
+	res := result(t, r.send("cameras.list", nil, false))
+	var cams []struct{ Device, Name string }
+	json.Unmarshal(res.Data, &cams)
+	if !res.OK || len(cams) != 2 || cams[0].Device != "/dev/video0" || cams[1].Device != "/dev/video4" || cams[1].Name != "USB 2.0 Camera" {
+		t.Fatalf("cameras %+v %+v", res, cams)
+	}
+}
+
+func TestSwitchSourceDuringStream(t *testing.T) {
+	r := cameraRig(t)
+	result(t, r.send("session.open", nil, true))
+	pc, gotVideo, _ := newViewer(t)
+	res := result(t, r.send("stream.start", map[string]string{"offer": pc.LocalDescription().SDP, "source": "screen", "output": "eDP-1", "audio": "none"}, false))
+	var ans struct{ Answer string }
+	json.Unmarshal(res.Data, &ans)
+	pc.SetRemoteDescription(webrtc.SessionDescription{Type: webrtc.SDPTypeAnswer, SDP: ans.Answer})
+	select {
+	case <-gotVideo:
+	case <-time.After(10 * time.Second):
+		t.Fatal("no video")
+	}
+	toCam := map[string]string{"source": "camera", "device": "/dev/video4"}
+	if res := result(t, r.send("stream.switch", toCam, false)); res.OK {
+		t.Fatal("switched to a camera without a fresh fingerprint")
+	}
+	if res := result(t, r.send("stream.switch", toCam, true)); !res.OK {
+		t.Fatalf("signed switch: %+v", res)
+	}
+	if !r.sys.ran("ffmpeg -hide_banner -loglevel error -f v4l2 -input_format mjpeg -framerate 30 -video_size 1280x720 -i /dev/video4") {
+		t.Fatalf("USB camera not used: %v", r.sys.calls)
+	}
+	if res := result(t, r.send("stream.switch", map[string]string{"source": "screen", "output": "eDP-1"}, false)); !res.OK {
+		t.Fatalf("back to the screen: %+v", res)
+	}
+	if res := result(t, r.send("stream.switch", map[string]string{"source": "camera", "device": "/etc/passwd"}, true)); res.OK {
+		t.Fatal("accepted a non-camera device")
 	}
 }

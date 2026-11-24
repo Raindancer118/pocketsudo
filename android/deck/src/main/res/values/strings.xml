@@ -60,7 +60,7 @@
     <string name="file_too_large">File too large (max. 24 MB)</string>
     <string name="screenshot_taking">Taking screenshot …</string>
     <string name="screenshot_saved">Saved in Pictures/PocketDeck</string>
-    <string name="needs_session">Open remote control under Keyboard first</string>
+    <string name="needs_session">Open remote control with your fingerprint first</string>
     <string name="files">Files</string>
     <string name="upload_here">Upload here</string>
     <string name="files_session_hint">One fingerprint opens your home folder for 15 minutes</string>
@@ -156,4 +156,5 @@
     <string name="no_results">Nothing found</string>
     <string name="zipping">Packing %1$d items …</string>
     <string name="file_details">%1$s · %2$s</string>
+    <string name="switch_source">Switch source</string>
 </resources>

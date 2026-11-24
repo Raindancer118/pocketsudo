@@ -27,10 +27,77 @@ func defaultICE() []webrtc.ICEServer {
 }
 
 type streamer struct {
-	pc     *webrtc.PeerConnection
-	cancel context.CancelFunc
-	mon    monitor
-	notice bool // camera or microphone indicator shown
+	pc       *webrtc.PeerConnection
+	ctx      context.Context
+	cancel   context.CancelFunc
+	video    *webrtc.TrackLocalStaticSample
+	pumpStop context.CancelFunc // current video source; replaced on switch
+	mon      monitor            // empty while a camera is shown (no touch input)
+	camera   bool
+	mic      bool
+	notice   bool // camera or microphone indicator shown
+	mu       sync.Mutex
+}
+
+type camera struct {
+	Device string `json:"device"`
+	Name   string `json:"name"`
+}
+
+// cameras lists capture devices with a colour format (skips IR and metadata nodes).
+func (a *Agent) cameras(ctx context.Context) []camera {
+	out, err := a.sys.Run(ctx, "v4l2-ctl", "--list-devices")
+	if err != nil {
+		return nil
+	}
+	var cams []camera
+	name, found := "", false
+	for _, line := range strings.Split(out, "\n") {
+		if line == "" {
+			continue
+		}
+		if !strings.HasPrefix(line, "\t") && !strings.HasPrefix(line, " ") {
+			name, found = strings.TrimSpace(strings.SplitN(line, ":", 2)[0]), false
+			continue
+		}
+		dev := strings.TrimSpace(line)
+		if found || !strings.HasPrefix(dev, "/dev/video") {
+			continue
+		}
+		f, err := a.sys.Run(ctx, "v4l2-ctl", "-d", dev, "--list-formats")
+		if err == nil && (strings.Contains(f, "MJPG") || strings.Contains(f, "YUYV")) {
+			cams = append(cams, camera{Device: dev, Name: name})
+			found = true
+		}
+	}
+	return cams
+}
+
+func (a *Agent) camerasList(ctx context.Context, _ json.RawMessage) (json.RawMessage, error) {
+	cams := a.cameras(ctx)
+	if cams == nil {
+		cams = []camera{}
+	}
+	return ok(cams)
+}
+
+// resolveSource checks the requested picture source and returns its monitor or camera device.
+func (a *Agent) resolveSource(ctx context.Context, source, output, device string) (monitor, string, error) {
+	if source == "camera" {
+		cams := a.cameras(ctx)
+		for _, c := range cams {
+			if c.Device == device || device == "" {
+				return monitor{}, c.Device, nil
+			}
+		}
+		return monitor{}, "", fmt.Errorf("no camera %q", device)
+	}
+	for _, m := range a.monitors(ctx) {
+		if m.Name == output || output == "" {
+			return m, "", nil
+		}
+	}
+	return monitor{}, "", fmt.Errorf("no monitor %q", output)
 }
 
 type monitor struct {
@@ -69,6 +136,7 @@ type streamReq struct {
 	Offer  string
 	Source string // "screen" or "camera"
 	Output string // monitor name for "screen"
+	Device string // camera device for "camera" (default: first camera)
 	Audio  string // "none", "system" or "mic"
 }
 
@@ -87,17 +155,9 @@ func (a *Agent) streamStart(ctx context.Context, body json.RawMessage) (json.Raw
 	}
 	a.stopStream()
 
-	var mon monitor
-	if req.Source != "camera" {
-		for _, m := range a.monitors(ctx) {
-			if m.Name == req.Output || req.Output == "" {
-				mon = m
-				break
-			}
-		}
-		if mon.Name == "" {
-			return nil, fmt.Errorf("no monitor %q", req.Output)
-		}
+	mon, device, err := a.resolveSource(ctx, req.Source, req.Output, req.Device)
+	if err != nil {
+		return nil, err
 	}
 
 	me := &webrtc.MediaEngine{}
@@ -132,12 +192,18 @@ func (a *Agent) streamStart(ctx context.Context, body json.RawMessage) (json.Raw
 	}
 
 	sctx, cancel := context.WithCancel(context.Background())
-	st := &streamer{pc: pc, cancel: cancel, mon: mon, notice: private}
+	st := &streamer{pc: pc, ctx: sctx, cancel: cancel, video: video, mon: mon,
+		camera: req.Source == "camera", mic: req.Audio == "mic", notice: private}
 	pc.OnDataChannel(func(dc *webrtc.DataChannel) {
 		if dc.Label() != "input" {
 			return
 		}
-		dc.OnMessage(func(msg webrtc.DataChannelMessage) { a.input(sctx, st.mon, msg.Data) })
+		dc.OnMessage(func(msg webrtc.DataChannelMessage) {
+			st.mu.Lock()
+			mon := st.mon
+			st.mu.Unlock()
+			a.input(sctx, mon, msg.Data)
+		})
 	})
 	pc.OnConnectionStateChange(func(s webrtc.PeerConnectionState) {
 		if s == webrtc.PeerConnectionStateFailed || s == webrtc.PeerConnectionStateClosed || s == webrtc.PeerConnectionStateDisconnected {
@@ -181,7 +247,7 @@ func (a *Agent) streamStart(ctx context.Context, body json.RawMessage) (json.Raw
 			"PocketDeck: "+what+" aktiv", "Wird gerade an "+a.cfg.DeviceName+" übertragen.")
 	}
 
-	go a.pumpVideo(sctx, video, req, mon)
+	a.switchVideo(st, mon, device)
 	if audio != nil {
 		go a.pumpAudio(sctx, audio, req.Audio)
 	}
@@ -224,13 +290,65 @@ func (a *Agent) streamStop(_ context.Context, _ json.RawMessage) (json.RawMessag
 	return nil, nil
 }
 
+// switchVideo replaces the picture source of a running stream; the WebRTC
+// connection stays up and the decoder picks up the new SPS/PPS.
+func (a *Agent) switchVideo(st *streamer, mon monitor, device string) {
+	st.mu.Lock()
+	if st.pumpStop != nil {
+		st.pumpStop()
+	}
+	pctx, stop := context.WithCancel(st.ctx)
+	st.pumpStop = stop
+	st.mon = mon
+	st.camera = device != ""
+	st.mu.Unlock()
+	go a.pumpVideo(pctx, st.video, mon, device)
+}
+
+func (a *Agent) streamSwitch(ctx context.Context, body json.RawMessage) (json.RawMessage, error) {
+	var req streamReq
+	if err := decode(body, &req); err != nil {
+		return nil, err
+	}
+	if req.Source == "camera" && !isAuthed(ctx) {
+		return nil, errNeedsFinger
+	}
+	a.mu.Lock()
+	st := a.stream
+	a.mu.Unlock()
+	if st == nil {
+		return nil, errors.New("no stream running")
+	}
+	mon, device, err := a.resolveSource(ctx, req.Source, req.Output, req.Device)
+	if err != nil {
+		return nil, err
+	}
+	st.mu.Lock()
+	wasCamera := st.camera
+	st.mu.Unlock()
+	a.switchVideo(st, mon, device)
+	if device != "" && !wasCamera {
+		st.notice = true
+		a.sys.Start(ctx, "notify-send", "-a", "PocketDeck", "-u", "critical", "-t", "0",
+			"PocketDeck: Kamera aktiv", "Wird gerade an "+a.cfg.DeviceName+" übertragen.")
+	} else if device == "" && wasCamera && !st.mic {
+		st.notice = false
+		a.sys.Start(ctx, "notify-send", "-a", "PocketDeck", "PocketDeck", "Kamera aus.")
+	}
+	w, h := mon.size()
+	if device != "" {
+		w, h = 1280, 720
+	}
+	return ok(map[string]any{"width": w, "height": h})
+}
+
 // pumpVideo feeds H.264 from wf-recorder (screen) or ffmpeg (camera) into the track.
-func (a *Agent) pumpVideo(ctx context.Context, track *webrtc.TrackLocalStaticSample, req streamReq, mon monitor) {
+func (a *Agent) pumpVideo(ctx context.Context, track *webrtc.TrackLocalStaticSample, mon monitor, device string) {
 	var rc io.ReadCloser
 	var err error
-	if req.Source == "camera" {
+	if device != "" {
 		rc, err = a.sys.Pipe(ctx, "ffmpeg", "-hide_banner", "-loglevel", "error",
-			"-f", "v4l2", "-framerate", "30", "-video_size", "1280x720", "-i", "/dev/video0",
+			"-f", "v4l2", "-input_format", "mjpeg", "-framerate", "30", "-video_size", "1280x720", "-i", device,
 			"-vaapi_device", "/dev/dri/renderD128", "-vf", "format=nv12,hwupload",
 			"-c:v", "h264_vaapi", "-profile:v", "constrained_baseline", "-g", "30", "-bf", "0", "-f", "h264", "-")
 	} else {

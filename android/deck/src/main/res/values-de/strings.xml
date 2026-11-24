@@ -58,7 +58,7 @@
     <string name="file_too_large">Datei zu groß (max. 24 MB)</string>
     <string name="screenshot_taking">Macht Screenshots …</string>
     <string name="screenshot_saved">In Bilder/PocketDeck gespeichert</string>
-    <string name="needs_session">Öffne zuerst die Fernsteuerung unter Tastatur</string>
+    <string name="needs_session">Öffne zuerst die Fernsteuerung mit deinem Fingerabdruck</string>
     <string name="files">Dateien</string>
     <string name="upload_here">Hier hochladen</string>
     <string name="files_session_hint">Ein Fingerabdruck öffnet deinen Home-Ordner für 15 Minuten</string>
@@ -154,4 +154,5 @@
     <string name="no_results">Nichts gefunden</string>
     <string name="zipping">Packt %1$d Einträge …</string>
     <string name="file_details">%1$s · %2$s</string>
+    <string name="switch_source">Quelle wechseln</string>
 </resources>

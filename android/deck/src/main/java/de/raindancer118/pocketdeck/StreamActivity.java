@@ -56,6 +56,8 @@ public class StreamActivity extends AppCompatActivity {
     private TextView state, pickerMessage;
     private final List<TextView> sourceViews = new ArrayList<>(), audioViews = new ArrayList<>();
     private String source = "", audio = "none";
+    /** id → [kind ("screen"/"camera"), output or device, label] */
+    private final java.util.LinkedHashMap<String, String[]> sources = new java.util.LinkedHashMap<>();
     private int frameW = 16, frameH = 9;
     private long lastMove;
     private float scrollAcc;
@@ -73,6 +75,10 @@ public class StreamActivity extends AppCompatActivity {
         findViewById(R.id.start).setOnClickListener(v -> start());
         findViewById(R.id.stop).setOnClickListener(v -> finish());
         findViewById(R.id.kbd).setOnClickListener(v -> startActivity(new Intent(this, KeyboardActivity.class)));
+        findViewById(R.id.switch_source).setOnClickListener(v -> {
+            View sw = findViewById(R.id.switcher);
+            sw.setVisibility(sw.getVisibility() == View.VISIBLE ? View.GONE : View.VISIBLE);
+        });
         setupTouch();
         loadSources();
         String[][] audios = {{"none", getString(R.string.audio_none)}, {"system", getString(R.string.audio_system)}, {"mic", getString(R.string.audio_mic)}};
@@ -110,36 +116,94 @@ public class StreamActivity extends AppCompatActivity {
 
     private void loadSources() {
         pickerMessage.setText(R.string.loading_monitors);
-        LinearLayout sr = findViewById(R.id.sources);
         deck.send("monitors.list", "{}", (ok, err, data) -> {
-            pickerMessage.setText(ok ? "" : err);
             try {
                 JSONArray ms = ok ? new JSONArray(data) : new JSONArray();
                 for (int i = 0; i < ms.length(); i++) {
                     String name = ms.getJSONObject(i).getString("name");
-                    addSource(sr, name, name);
+                    sources.put("screen:" + name, new String[]{"screen", name, name});
                 }
             } catch (JSONException ignored) {
             }
-            addSource(sr, "camera", getString(R.string.camera));
-            if (!sourceViews.isEmpty()) {
-                select(sourceViews, sourceViews.get(0));
-                source = (String) sourceViews.get(0).getTag();
-            }
+            deck.send("cameras.list", "{}", (ok2, err2, data2) -> {
+                pickerMessage.setText(ok ? "" : err);
+                try {
+                    JSONArray cs = ok2 ? new JSONArray(data2) : new JSONArray();
+                    for (int i = 0; i < cs.length(); i++) {
+                        JSONObject c = cs.getJSONObject(i);
+                        sources.put("camera:" + c.getString("device"), new String[]{"camera", c.getString("device"), c.getString("name")});
+                    }
+                } catch (JSONException ignored) {
+                }
+                buildSourceChips();
+            });
         });
     }
 
-    private void addSource(LinearLayout parent, String id, String label) {
-        TextView t = chip(label);
-        t.setTag(id);
-        t.setOnClickListener(v -> {
-            source = id;
-            select(sourceViews, t);
+    private void buildSourceChips() {
+        LinearLayout sr = findViewById(R.id.sources), sw = findViewById(R.id.switch_list);
+        sr.removeAllViews();
+        sw.removeAllViews();
+        sourceViews.clear();
+        for (java.util.Map.Entry<String, String[]> e : sources.entrySet()) {
+            String id = e.getKey();
+            String[] src = e.getValue();
+            String label = "camera".equals(src[0]) ? src[2] : src[2];
+            TextView t = chip(label);
+            t.setTag(id);
+            t.setOnClickListener(v -> {
+                source = id;
+                select(sourceViews, t);
+            });
+            sourceViews.add(t);
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(dp(240), dp(44));
+            lp.bottomMargin = dp(8);
+            sr.addView(t, lp);
+
+            TextView live = chip(label);
+            live.setOnClickListener(v -> switchTo(id));
+            sw.addView(live);
+        }
+        if (!sourceViews.isEmpty()) {
+            select(sourceViews, sourceViews.get(0));
+            source = (String) sourceViews.get(0).getTag();
+        }
+    }
+
+    /** Switches the running stream without reconnecting; cameras need the finger. */
+    private void switchTo(String id) {
+        String[] src = sources.get(id);
+        if (src == null) return;
+        String body;
+        try {
+            JSONObject o = new JSONObject().put("source", src[0]);
+            if ("camera".equals(src[0])) o.put("device", src[1]);
+            else o.put("output", src[1]);
+            body = o.toString();
+        } catch (JSONException e) {
+            return;
+        }
+        findViewById(R.id.switcher).setVisibility(View.GONE);
+        Deck.Callback cb = (ok, err, data) -> {
+            if (ok) source = id;
+            else state(err, R.drawable.dot_warn);
+        };
+        DeckCrypto.Message m = DeckCrypto.newMessage("stream.switch", body);
+        if (!"camera".equals(src[0])) {
+            deck.send(m, cb);
+            return;
+        }
+        BioSign.sign(this, m, getString(R.string.bio_camera, deck.pairing().hostname), new BioSign.Result() {
+            @Override
+            public void signed(DeckCrypto.Message signed) {
+                deck.send(signed, cb);
+            }
+
+            @Override
+            public void failed(String why) {
+                state(why, R.drawable.dot_warn);
+            }
         });
-        sourceViews.add(t);
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(dp(220), dp(44));
-        lp.bottomMargin = dp(8);
-        parent.addView(t, lp);
     }
 
     private TextView chip(String label) {
@@ -217,15 +281,26 @@ public class StreamActivity extends AppCompatActivity {
     private void sendOffer(String sdp) {
         String body;
         try {
-            body = new JSONObject().put("offer", sdp).put("source", "camera".equals(source) ? "camera" : "screen")
-                    .put("output", "camera".equals(source) ? "" : source).put("audio", audio).toString();
+            String[] src = sources.get(source);
+            boolean cam = src != null && "camera".equals(src[0]);
+            body = new JSONObject().put("offer", sdp).put("source", cam ? "camera" : "screen")
+                    .put("output", cam || src == null ? "" : src[1]).put("device", cam ? src[1] : "")
+                    .put("audio", audio).toString();
         } catch (JSONException e) {
             return;
         }
         DeckCrypto.Message m = DeckCrypto.newMessage("stream.start", body);
         Deck.Callback answer = (ok, err, data) -> {
             if (!ok) {
-                pickerMessage.setText(Session.isSessionError(err) ? getString(R.string.needs_session) : err);
+                if (Session.isSessionError(err)) {
+                    // session ran out: one finger, then start again with a fresh offer
+                    Session.open(this, (o, e) -> {
+                        if (o) restart();
+                        else pickerMessage.setText(e);
+                    });
+                } else {
+                    pickerMessage.setText(err);
+                }
                 return;
             }
             try {
@@ -239,7 +314,7 @@ public class StreamActivity extends AppCompatActivity {
                 pickerMessage.setText(e.getMessage());
             }
         };
-        boolean privateSource = "camera".equals(source) || "mic".equals(audio);
+        boolean privateSource = source.startsWith("camera:") || "mic".equals(audio);
         if (!privateSource) {
             deck.send(m, answer);
             return;
@@ -256,6 +331,17 @@ public class StreamActivity extends AppCompatActivity {
                 pickerMessage.setText(why);
             }
         });
+    }
+
+    private void restart() {
+        if (input != null) input.close();
+        if (pc != null) pc.close();
+        pc = null;
+        input = null;
+        video.release();
+        if (factory != null) factory.dispose();
+        if (egl != null) egl.release();
+        start();
     }
 
     private void state(String text, int dot) {
@@ -288,7 +374,8 @@ public class StreamActivity extends AppCompatActivity {
 
         @Override
         public void onConnectionChange(PeerConnection.PeerConnectionState s) {
-            if (s == PeerConnection.PeerConnectionState.FAILED || s == PeerConnection.PeerConnectionState.DISCONNECTED) {
+            // DISCONNECTED is often a short hiccup that heals itself; only FAILED is final
+            if (s == PeerConnection.PeerConnectionState.FAILED) {
                 runOnUiThread(() -> state(getString(R.string.stream_failed), R.drawable.dot_off));
             }
         }
@@ -356,6 +443,12 @@ public class StreamActivity extends AppCompatActivity {
 
     private void setupTouch() {
         GestureDetector g = new GestureDetector(this, new GestureDetector.SimpleOnGestureListener() {
+            // without this Android stops delivering the rest of the gesture
+            @Override
+            public boolean onDown(@NonNull MotionEvent e) {
+                return true;
+            }
+
             @Override
             public boolean onSingleTapConfirmed(@NonNull MotionEvent e) {
                 send("tap", e.getX(), e.getY(), 0);
@@ -394,14 +487,12 @@ public class StreamActivity extends AppCompatActivity {
         });
     }
 
-    /** Maps view coordinates into 0..1 of the actual picture (letterboxing removed). */
-    private void send(String type, float vx, float vy, int dy) {
+    /** Maps a touch on the full-screen touch layer into 0..1 of the picture. */
+    private void send(String type, float tx, float ty, int dy) {
         if (input == null || input.state() != DataChannel.State.OPEN) return;
-        float vw = video.getWidth(), vh = video.getHeight();
-        float scale = Math.min(vw / frameW, vh / frameH);
-        float w = frameW * scale, h = frameH * scale;
-        float left = (vw - w) / 2, top = (vh - h) / 2;
-        double x = (vx - left) / w, y = (vy - top) / h;
+        // the renderer is sized to the picture and centred; its bounds are the picture
+        double x = (tx - video.getLeft()) / (double) video.getWidth();
+        double y = (ty - video.getTop()) / (double) video.getHeight();
         if (x < 0 || x > 1 || y < 0 || y > 1) return;
         String msg = "{\"t\":\"" + type + "\",\"x\":" + x + ",\"y\":" + y + ",\"dy\":" + dy + "}";
         input.send(new DataChannel.Buffer(ByteBuffer.wrap(msg.getBytes(StandardCharsets.UTF_8)), false));
