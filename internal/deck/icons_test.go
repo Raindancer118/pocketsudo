@@ -45,9 +45,12 @@ func TestAppIcons(t *testing.T) {
 	writePNG(t, filepath.Join(data, "pixmaps/pixicon.png"), 32)
 
 	res := result(t, r.send("apps.icons", nil, false))
-	var out struct{ Blob, Hash string }
+	var out struct {
+		Blob, Hash string
+		Count      int
+	}
 	json.Unmarshal(res.Data, &out)
-	if !res.OK || out.Blob == "" || out.Hash == "" {
+	if !res.OK || out.Blob == "" || out.Hash == "" || out.Count != 3 {
 		t.Fatalf("apps.icons: %+v", res)
 	}
 	var raw []byte

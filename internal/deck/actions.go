@@ -41,6 +41,9 @@ func init() {
 		"workspace":      {fn: (*Agent).workspace},
 		"apps.list":      {fn: (*Agent).appsList},
 		"apps.icons":     {fn: (*Agent).appsIcons},
+		"window.move":    {session: true, fn: (*Agent).windowMove},
+		"window.close":   {session: true, fn: (*Agent).windowClose},
+		"window.kill":    {session: true, fn: (*Agent).windowKill},
 		"app.launch":     {fn: (*Agent).appLaunch},
 		"open.url":       {fn: (*Agent).openURL},
 		"clipboard.get":  {fn: (*Agent).clipboardGet},
@@ -278,6 +281,10 @@ type App struct {
 	ID   string `json:"id"`
 	Name string `json:"name"`
 	Icon string `json:"-"` // Icon= of the desktop entry: a theme name or an absolute path
+	// for matching open windows to the app
+	WMClass string   `json:"-"`
+	Bin     string   `json:"-"`
+	Running []Window `json:"running,omitempty"`
 }
 
 func defaultDataDirs() []string {
@@ -299,9 +306,9 @@ func installedApps(dataDirs []string) []App {
 				continue
 			}
 			seen[id] = true
-			name, icon, hidden := readDesktop(f)
-			if !hidden && name != "" {
-				apps = append(apps, App{ID: id, Name: name, Icon: icon})
+			e := readDesktop(f)
+			if !e.hidden && e.name != "" {
+				apps = append(apps, App{ID: id, Name: e.name, Icon: e.icon, WMClass: e.wmClass, Bin: e.bin})
 			}
 		}
 	}
@@ -309,10 +316,16 @@ func installedApps(dataDirs []string) []App {
 	return apps
 }
 
-func readDesktop(path string) (name, icon string, hidden bool) {
+type desktopEntry struct {
+	name, icon, wmClass, bin string
+	hidden                   bool
+}
+
+func readDesktop(path string) (e desktopEntry) {
 	f, err := os.Open(path)
 	if err != nil {
-		return "", "", true
+		e.hidden = true
+		return e
 	}
 	defer f.Close()
 	sc := bufio.NewScanner(f)
@@ -326,22 +339,31 @@ func readDesktop(path string) (name, icon string, hidden bool) {
 		if !inEntry {
 			continue
 		}
+		k, v, _ := strings.Cut(l, "=")
 		switch {
-		case strings.HasPrefix(l, "Name=") && name == "":
-			name = strings.TrimPrefix(l, "Name=")
-		case strings.HasPrefix(l, "Icon=") && icon == "":
-			icon = strings.TrimPrefix(l, "Icon=")
+		case k == "Name" && e.name == "":
+			e.name = v
+		case k == "Icon" && e.icon == "":
+			e.icon = v
+		case k == "StartupWMClass":
+			e.wmClass = v
+		case k == "Exec" && e.bin == "":
+			if fields := strings.Fields(v); len(fields) > 0 {
+				e.bin = filepath.Base(fields[0])
+			}
 		case l == "NoDisplay=true", l == "Hidden=true":
-			hidden = true
-		case strings.HasPrefix(l, "Type=") && l != "Type=Application":
-			hidden = true
+			e.hidden = true
+		case k == "Type" && v != "Application":
+			e.hidden = true
 		}
 	}
-	return name, icon, hidden
+	return e
 }
 
-func (a *Agent) appsList(_ context.Context, _ json.RawMessage) (json.RawMessage, error) {
-	return ok(installedApps(a.dataDirs))
+func (a *Agent) appsList(ctx context.Context, _ json.RawMessage) (json.RawMessage, error) {
+	apps := installedApps(a.dataDirs)
+	attachWindows(apps, a.windows(ctx))
+	return ok(apps)
 }
 
 func (a *Agent) appLaunch(ctx context.Context, body json.RawMessage) (json.RawMessage, error) {

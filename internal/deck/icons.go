@@ -36,6 +36,8 @@ func (a *Agent) appsIcons(ctx context.Context, body json.RawMessage) (json.RawMe
 	var buf bytes.Buffer
 	zw := zip.NewWriter(&buf)
 	h := sha256.New()
+	h.Write([]byte("zip-v2")) // bump when the zip format changes, so phones fetch again
+	count := 0
 	for _, app := range installedApps(a.dataDirs) {
 		img := a.appIcon(ctx, app, idx)
 		if img == nil {
@@ -43,11 +45,14 @@ func (a *Agent) appsIcons(ctx context.Context, body json.RawMessage) (json.RawMe
 		}
 		h.Write([]byte(app.ID))
 		h.Write(img)
-		w, err := zw.CreateHeader(&zip.FileHeader{Name: app.ID + ".png", Method: zip.Store}) // PNG is compressed already
+		// Deflate even though PNG is compressed: Go writes Stored entries with a data
+		// descriptor, which Java's ZipInputStream on the phone cannot read
+		w, err := zw.Create(app.ID + ".png")
 		if err != nil {
 			return nil, err
 		}
 		w.Write(img)
+		count++
 	}
 	if err := zw.Close(); err != nil {
 		return nil, err
@@ -60,7 +65,7 @@ func (a *Agent) appsIcons(ctx context.Context, body json.RawMessage) (json.RawMe
 	if err != nil {
 		return nil, err
 	}
-	return ok(map[string]string{"hash": hash, "blob": id})
+	return ok(map[string]any{"hash": hash, "blob": id, "count": count})
 }
 
 // icons returns the icon index, rebuilt every 10 minutes (new apps, theme change).
