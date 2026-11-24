@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"net/url"
+	"strings"
 	"time"
 
 	"github.com/mdp/qrterminal/v3"
@@ -43,22 +44,43 @@ func Pair(ctx context.Context, cfg *Config, relay, hostname string, ui PairUI) (
 	if err != nil {
 		return nil, err
 	}
+	created, info, err := PairChannel(ctx, relay, protocol.CreateChannelReq{HostPub: hostPub, Hostname: hostname}, ui,
+		func(secret []byte, channel string, info protocol.PairingInfo) bool {
+			return protocol.CheckPairMAC(secret, channel, info.PhonePub, info.DeviceName, info.MAC)
+		})
+	if err != nil {
+		return nil, err
+	}
+	p := Pairing{Relay: relay, Channel: created.Channel, HostToken: created.HostToken,
+		PhonePub: info.PhonePub, DeviceName: info.DeviceName, Paired: time.Now()}
+	cfg.Pairings = append(cfg.Pairings, p)
+	return &p, cfg.Save()
+}
+
+// PairChannel runs the QR handshake for any app (sudo, deck): create the
+// channel, show the code, wait for a phone whose MAC checks out, compare the
+// verification code with the user and confirm.
+func PairChannel(ctx context.Context, relay string, req protocol.CreateChannelReq, ui PairUI,
+	checkMAC func(secret []byte, channel string, info protocol.PairingInfo) bool) (protocol.CreateChannelResp, protocol.PairingInfo, error) {
+	var none protocol.PairingInfo
 	anon := NewClient(relay, "")
 	var created protocol.CreateChannelResp
-	if _, err := anon.Do(ctx, "POST", "/v1/channels", protocol.CreateChannelReq{HostPub: hostPub, Hostname: hostname}, &created); err != nil {
-		return nil, fmt.Errorf("create channel on %s: %w", relay, err)
+	if _, err := anon.Do(ctx, "POST", "/v1/channels", req, &created); err != nil {
+		return created, none, fmt.Errorf("create channel on %s: %w", relay, err)
 	}
 	secret := make([]byte, 32)
 	if _, err := rand.Read(secret); err != nil {
-		return nil, err
+		return created, none, err
 	}
-	fp, _ := protocol.KeyFingerprint(hostPub)
-	uri := PairURI(relay, created.Channel, secret, fp, hostname)
-
+	fp, _ := protocol.KeyFingerprint(req.HostPub)
+	uri := PairURI(relay, created.Channel, secret, fp, req.Hostname)
+	if req.App == protocol.AppDeck {
+		uri = strings.Replace(uri, "pocketsudo://pair?", "pocketdeck://pair?", 1)
+	}
 	if ui.ShowQR == nil {
 		ui.ShowQR = func(uri string) { RenderQR(ui.Out, uri) }
 	}
-	fmt.Fprintln(ui.Out, "Scan this with the phone camera or in the PocketSudo app (Scan code):")
+	fmt.Fprintln(ui.Out, "Scan this with the phone camera or in the app (Scan code):")
 	ui.ShowQR(uri)
 	fmt.Fprintln(ui.Out, "Waiting for the phone (10 minutes)…")
 
@@ -70,7 +92,7 @@ func Pair(ctx context.Context, cfg *Config, relay, hostname string, ui PairUI) (
 		code, err := c.Do(ctx, "GET", "/v1/channels/"+created.Channel+"/pairing?wait=25", nil, &info)
 		if err != nil {
 			if ctx.Err() != nil {
-				return nil, errors.New("pairing timed out")
+				return created, none, errors.New("pairing timed out")
 			}
 			fmt.Fprintln(ui.Out, "relay:", err, "– retrying")
 			sleep(ctx, 3*time.Second)
@@ -83,22 +105,18 @@ func Pair(ctx context.Context, cfg *Config, relay, hostname string, ui PairUI) (
 			fmt.Fprintln(ui.Out, why)
 			c.Do(ctx, "POST", "/v1/channels/"+created.Channel+"/confirm", protocol.ConfirmReq{Accept: false}, nil)
 		}
-		if !protocol.CheckPairMAC(secret, created.Channel, info.PhonePub, info.DeviceName, info.MAC) {
+		if !checkMAC(secret, created.Channel, info) {
 			reject("A device without the QR secret tried to pair – rejected, still waiting.")
 			continue
 		}
-		vcode := protocol.VerificationCode(hostPub, info.PhonePub)
-		if !ui.Confirm(info.DeviceName, vcode) {
+		if !ui.Confirm(info.DeviceName, protocol.VerificationCode(req.HostPub, info.PhonePub)) {
 			reject("Pairing rejected.")
-			return nil, errors.New("pairing rejected by user")
+			return created, none, errors.New("pairing rejected by user")
 		}
 		if _, err := c.Do(ctx, "POST", "/v1/channels/"+created.Channel+"/confirm", protocol.ConfirmReq{Accept: true}, nil); err != nil {
-			return nil, err
+			return created, none, err
 		}
-		p := Pairing{Relay: relay, Channel: created.Channel, HostToken: created.HostToken,
-			PhonePub: info.PhonePub, DeviceName: info.DeviceName, Paired: time.Now()}
-		cfg.Pairings = append(cfg.Pairings, p)
-		return &p, cfg.Save()
+		return created, info, nil
 	}
 }
 
