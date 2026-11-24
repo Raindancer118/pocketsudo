@@ -68,6 +68,8 @@ jobs:
           mkdir -p dist
           cp app/build/outputs/apk/release/app-release.apk "dist/pocketsudo-$POCKETSUDO_VERSION_NAME.apk"
           cp app/build/outputs/apk/release/app-release.apk dist/pocketsudo.apk
+          cp deck/build/outputs/apk/release/deck-release.apk "dist/pocketdeck-$POCKETSUDO_VERSION_NAME.apk"
+          cp deck/build/outputs/apk/release/deck-release.apk dist/pocketdeck.apk
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: pocketsudo-apk
@@ -139,7 +141,7 @@ jobs:
       - name: Build binaries
         run: |
           for arch in amd64 arm64; do
-            for cmd in pocketsudo pocketsudo-relay; do
+            for cmd in pocketsudo pocketsudo-relay pocketdeck; do
               CGO_ENABLED=0 GOOS=linux GOARCH=$arch go build -trimpath \
                 -ldflags "-s -w -X main.version=$GITHUB_REF_NAME" -o "dist/$cmd-linux-$arch" ./cmd/$cmd
             done

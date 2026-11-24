@@ -1,0 +1,57 @@
+plugins {
+    id "com.android.application"
+}
+
+// same release key as PocketSudo (CI secrets); local builds are debug-signed
+def ks = System.getenv("POCKETSUDO_KEYSTORE")
+
+android {
+    namespace "de.raindancer118.pocketdeck"
+    compileSdk 36
+
+    defaultConfig {
+        applicationId "de.raindancer118.pocketdeck"
+        // ECDH inside the Android Keystore (PURPOSE_AGREE_KEY) needs API 31
+        minSdk 31
+        targetSdk 36
+        versionCode Integer.parseInt(System.getenv("POCKETSUDO_VERSION_CODE") ?: "1")
+        versionName System.getenv("POCKETSUDO_VERSION_NAME") ?: "0.3.0-dev"
+    }
+
+    signingConfigs {
+        if (ks) {
+            release {
+                storeFile file(ks)
+                storePassword System.getenv("POCKETSUDO_KEYSTORE_PASSWORD")
+                keyAlias System.getenv("POCKETSUDO_KEY_ALIAS") ?: "pocketsudo"
+                keyPassword System.getenv("POCKETSUDO_KEY_PASSWORD") ?: System.getenv("POCKETSUDO_KEYSTORE_PASSWORD")
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled true
+            shrinkResources true
+            proguardFiles getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro"
+            signingConfig ks ? signingConfigs.release : signingConfigs.debug
+        }
+    }
+
+    buildFeatures {
+        buildConfig true
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    lint {
+        abortOnError true
+    }
+}
+
+dependencies {
+    implementation project(":core")
+}

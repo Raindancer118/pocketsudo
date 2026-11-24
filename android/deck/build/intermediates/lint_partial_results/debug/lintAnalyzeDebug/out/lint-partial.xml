@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<incidents format="6" by="lint 8.13.0" type="partial_results">
+    <map id="NotificationPermission">
+        <location id="class"
+            file="$GRADLE_USER_HOME/caches/8.14.5/transforms/f690cf2c4095f6f22edc26c20b706c61/transformed/firebase-messaging-26.0.2/jars/classes.jar"/>
+        <entry
+            name="className"
+            string="com/google/firebase/messaging/DisplayNotification"/>
+    </map>
+    <map id="UnsafeIntentLaunch">
+            <map id="unprotected">
+                <entry
+                    name="de.raindancer118.pocketdeck.MainActivity"
+                    boolean="true"/>
+                <entry
+                    name="de.raindancer118.pocketdeck.PairActivity"
+                    boolean="true"/>
+            </map>
+    </map>
+    <map id="UnusedResources">
+        <entry
+            name="model"
+            string="animator[press(R)],color[surface2(R),line_strong(R),surface(R),bg_half(U),bg(R),text1(R),line(R),text2(R),ic_launcher_bg(U),text3(R)],dimen[radius(R)],drawable[bg_circle(U),bg_cover(U),cover_fade(U),ic_clip(U),ic_fp_big(U),ic_home(U),ic_launcher_fg(U),ic_launcher_mono(U),ic_link(U),ic_lock(U),ic_next(U),ic_pause(U),ic_play(U),ic_prev(U),ic_remote(U),seek_thumb(U),seek_track(U),bg_link(R),ic_sun(R),ic_moon(R),dot_off(R),dot_warn(R),dot_live(R)],id[title(D),theme(U),view_start(U),view_remote(U),view_empty(U),tab_line(U),tabs(U),tab_start(U),tab_remote(U),headline(U),code(U),state(U),done(U),cancel(U),pair_cmd(U),scan(U),cover_card(U),cover(U),playing_on(U),track(U),artist(U),prev(U),play(U),next(U),volume_label(U),volume(U),brightness_label(U),brightness(U),clip_get(U),clip_send(U),open_link(U),remote_message(U),host(U),status(U),lock_button(U),lock_label(U),message(U)],layout[activity_main(U),view_start(U),view_remote(U),view_empty(U),activity_pair(U)],mipmap[ic_launcher(U)],string[app_name(U),theme_toggle(U),tab_start(U),tab_remote(U),done(U),cancel(U),on_computer(U),scan(U),previous(U),play_pause(U),next(U),clip_get(U),clip_send(U),open_link(U),unlock(U),not_paired(U),no_answer(U),locked(U),unlocked(U),offline(U),lock(U),unlocked_done(U),locked_done(U),battery(U),charging(U),bio_unlock(U),playing_on(U),nothing_playing(U),volume(U),brightness(U),clip_got(U),clip_sent(U),clip_empty(U),link_opened(U),no_link(U),no_biometric(U),key_invalid(U),not_a_code(U),pair_insecure(U),pair_connecting(U),pair_compare(U),pair_confirm_there(U),pair_done(U),pair_rejected(U),pair_failed(U),pair_wrong_host(U),pair_used(U)],style[Theme_PocketSudo(R),Text_Wordmark(R),Tab(U),Text_Small(R),Text_Code(R),Text(R),Button_Primary(R),Text_Link(R),Text_Command(R),MediaButton(U),SliderLabel(U),Slider(U),Row(U),Text_Host(R)],xml[data_extraction_rules(U)];c^1^2,d^3^b,e^4^5,f^6,10^6,11^6,14^6,15^6,16^6,17^6,18^6,19^6,1a^6,1b^6,1c^7^6,48^4e^7e^1d^4f^0^49^4a^4b^7^50^11^7f^51^1a,49^8a^8^82^c^5c^0^80,4a^d^e^8^80^82^56^19^86^57^17^58^16^87^88^7^59^89^5a^5b,4b^54^80^85^55^83,4c^80^81^8^82^52^83^53^84,4d^9^12^13,7f^82^a^1d,86^c^0,87^82^8,88^1c^1b,89^82^1d;;;"/>
+    </map>
+
+</incidents>

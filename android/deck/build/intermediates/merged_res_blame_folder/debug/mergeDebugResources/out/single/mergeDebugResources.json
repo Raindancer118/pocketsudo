@@ -1,0 +1,98 @@
+[
+    {
+        "merged": "de.raindancer118.pocketdeck-debug-35:/layout_view_remote.xml.flat",
+        "source": "de.raindancer118.pocketdeck-main-37:/layout/view_remote.xml"
+    },
+    {
+        "merged": "de.raindancer118.pocketdeck-debug-35:/drawable_ic_pause.xml.flat",
+        "source": "de.raindancer118.pocketdeck-main-37:/drawable/ic_pause.xml"
+    },
+    {
+        "merged": "de.raindancer118.pocketdeck-debug-35:/drawable_ic_fp_big.xml.flat",
+        "source": "de.raindancer118.pocketdeck-main-37:/drawable/ic_fp_big.xml"
+    },
+    {
+        "merged": "de.raindancer118.pocketdeck-debug-35:/drawable_ic_clip.xml.flat",
+        "source": "de.raindancer118.pocketdeck-main-37:/drawable/ic_clip.xml"
+    },
+    {
+        "merged": "de.raindancer118.pocketdeck-debug-35:/drawable_ic_launcher_mono.xml.flat",
+        "source": "de.raindancer118.pocketdeck-main-37:/drawable/ic_launcher_mono.xml"
+    },
+    {
+        "merged": "de.raindancer118.pocketdeck-debug-35:/drawable_ic_prev.xml.flat",
+        "source": "de.raindancer118.pocketdeck-main-37:/drawable/ic_prev.xml"
+    },
+    {
+        "merged": "de.raindancer118.pocketdeck-debug-35:/mipmap-anydpi-v26_ic_launcher.xml.flat",
+        "source": "de.raindancer118.pocketdeck-main-37:/mipmap-anydpi-v26/ic_launcher.xml"
+    },
+    {
+        "merged": "de.raindancer118.pocketdeck-debug-35:/drawable_ic_next.xml.flat",
+        "source": "de.raindancer118.pocketdeck-main-37:/drawable/ic_next.xml"
+    },
+    {
+        "merged": "de.raindancer118.pocketdeck-debug-35:/drawable_seek_thumb.xml.flat",
+        "source": "de.raindancer118.pocketdeck-main-37:/drawable/seek_thumb.xml"
+    },
+    {
+        "merged": "de.raindancer118.pocketdeck-debug-35:/drawable_cover_fade.xml.flat",
+        "source": "de.raindancer118.pocketdeck-main-37:/drawable/cover_fade.xml"
+    },
+    {
+        "merged": "de.raindancer118.pocketdeck-debug-35:/drawable_ic_home.xml.flat",
+        "source": "de.raindancer118.pocketdeck-main-37:/drawable/ic_home.xml"
+    },
+    {
+        "merged": "de.raindancer118.pocketdeck-debug-35:/drawable_bg_circle.xml.flat",
+        "source": "de.raindancer118.pocketdeck-main-37:/drawable/bg_circle.xml"
+    },
+    {
+        "merged": "de.raindancer118.pocketdeck-debug-35:/drawable_seek_track.xml.flat",
+        "source": "de.raindancer118.pocketdeck-main-37:/drawable/seek_track.xml"
+    },
+    {
+        "merged": "de.raindancer118.pocketdeck-debug-35:/layout_view_empty.xml.flat",
+        "source": "de.raindancer118.pocketdeck-main-37:/layout/view_empty.xml"
+    },
+    {
+        "merged": "de.raindancer118.pocketdeck-debug-35:/drawable_bg_cover.xml.flat",
+        "source": "de.raindancer118.pocketdeck-main-37:/drawable/bg_cover.xml"
+    },
+    {
+        "merged": "de.raindancer118.pocketdeck-debug-35:/drawable_ic_lock.xml.flat",
+        "source": "de.raindancer118.pocketdeck-main-37:/drawable/ic_lock.xml"
+    },
+    {
+        "merged": "de.raindancer118.pocketdeck-debug-35:/drawable_ic_link.xml.flat",
+        "source": "de.raindancer118.pocketdeck-main-37:/drawable/ic_link.xml"
+    },
+    {
+        "merged": "de.raindancer118.pocketdeck-debug-35:/drawable_ic_play.xml.flat",
+        "source": "de.raindancer118.pocketdeck-main-37:/drawable/ic_play.xml"
+    },
+    {
+        "merged": "de.raindancer118.pocketdeck-debug-35:/drawable_ic_launcher_fg.xml.flat",
+        "source": "de.raindancer118.pocketdeck-main-37:/drawable/ic_launcher_fg.xml"
+    },
+    {
+        "merged": "de.raindancer118.pocketdeck-debug-35:/layout_activity_main.xml.flat",
+        "source": "de.raindancer118.pocketdeck-main-37:/layout/activity_main.xml"
+    },
+    {
+        "merged": "de.raindancer118.pocketdeck-debug-35:/layout_view_start.xml.flat",
+        "source": "de.raindancer118.pocketdeck-main-37:/layout/view_start.xml"
+    },
+    {
+        "merged": "de.raindancer118.pocketdeck-debug-35:/xml_data_extraction_rules.xml.flat",
+        "source": "de.raindancer118.pocketdeck-main-37:/xml/data_extraction_rules.xml"
+    },
+    {
+        "merged": "de.raindancer118.pocketdeck-debug-35:/layout_activity_pair.xml.flat",
+        "source": "de.raindancer118.pocketdeck-main-37:/layout/activity_pair.xml"
+    },
+    {
+        "merged": "de.raindancer118.pocketdeck-debug-35:/drawable_ic_remote.xml.flat",
+        "source": "de.raindancer118.pocketdeck-main-37:/drawable/ic_remote.xml"
+    }
+]

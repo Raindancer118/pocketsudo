@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fitsSystemWindows="true"
+    android:orientation="vertical">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="56dp"
+        android:gravity="center_vertical"
+        android:paddingStart="20dp"
+        android:paddingEnd="8dp">
+
+        <TextView
+            android:id="@+id/title"
+            style="@style/Text.Wordmark"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="@string/app_name" />
+
+        <ImageButton
+            android:id="@+id/theme"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:background="@drawable/bg_link"
+            android:contentDescription="@string/theme_toggle"
+            android:stateListAnimator="@animator/press" />
+    </LinearLayout>
+
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1">
+
+        <include android:id="@+id/view_start" layout="@layout/view_start" />
+        <include android:id="@+id/view_remote" layout="@layout/view_remote" android:visibility="gone" />
+        <include android:id="@+id/view_empty" layout="@layout/view_empty" android:visibility="gone" />
+    </FrameLayout>
+
+    <View
+        android:id="@+id/tab_line"
+        android:layout_width="match_parent"
+        android:layout_height="1px"
+        android:background="@color/line" />
+
+    <!-- equal-width tabs -->
+    <LinearLayout
+        android:id="@+id/tabs"
+        android:layout_width="match_parent"
+        android:layout_height="64dp"
+        android:orientation="horizontal">
+
+        <TextView
+            android:id="@+id/tab_start"
+            style="@style/Tab"
+            android:text="@string/tab_start"
+            app:drawableTopCompat="@drawable/ic_home"
+            xmlns:app="http://schemas.android.com/apk/res-auto" />
+
+        <TextView
+            android:id="@+id/tab_remote"
+            style="@style/Tab"
+            android:text="@string/tab_remote"
+            app:drawableTopCompat="@drawable/ic_remote"
+            xmlns:app="http://schemas.android.com/apk/res-auto" />
+    </LinearLayout>
+</LinearLayout>

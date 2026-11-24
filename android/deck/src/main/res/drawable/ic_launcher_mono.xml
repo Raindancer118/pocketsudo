@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- PocketDeck: a 2×2 deck of tiles, one of them live. Inside the 66dp safe zone. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp" android:height="108dp" android:viewportWidth="108" android:viewportHeight="108">
+    <path android:pathData="M37,37h15v15h-15z" android:strokeColor="#FF000000" android:strokeWidth="3.5" android:fillColor="#00000000" />
+    <path android:pathData="M56,37h15v15h-15z" android:strokeColor="#FF000000" android:strokeWidth="3.5" android:fillColor="#00000000" />
+    <path android:pathData="M37,56h15v15h-15z" android:strokeColor="#FF000000" android:strokeWidth="3.5" android:fillColor="#00000000" />
+    <path android:pathData="M56,56h15v15h-15z" android:fillColor="#FF000000" />
+</vector>

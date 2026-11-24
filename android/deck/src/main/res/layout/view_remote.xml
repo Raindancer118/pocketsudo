@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_horizontal"
+        android:orientation="vertical"
+        android:paddingStart="20dp"
+        android:paddingEnd="20dp"
+        android:paddingBottom="24dp">
+
+        <!-- now playing: the cover lies pale behind the controls and fades out upwards -->
+        <FrameLayout
+            android:id="@+id/cover_card"
+            android:layout_width="match_parent"
+            android:layout_height="300dp"
+            android:layout_marginTop="8dp"
+            android:background="@drawable/bg_cover">
+
+            <ImageView
+                android:id="@+id/cover"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:alpha="0.35"
+                android:importantForAccessibility="no"
+                android:scaleType="centerCrop" />
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:background="@drawable/cover_fade" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:gravity="bottom|center_horizontal"
+                android:orientation="vertical"
+                android:padding="20dp">
+
+                <TextView
+                    android:id="@+id/playing_on"
+                    style="@style/Text.Small"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textColor="@color/text2" />
+
+                <TextView
+                    android:id="@+id/track"
+                    style="@style/Text"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:ellipsize="end"
+                    android:gravity="center"
+                    android:maxLines="2"
+                    android:textFontWeight="600"
+                    android:textSize="20sp" />
+
+                <TextView
+                    android:id="@+id/artist"
+                    style="@style/Text"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:maxLines="1"
+                    android:textColor="@color/text2"
+                    android:textSize="14sp" />
+
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="18dp"
+                    android:orientation="horizontal">
+
+                    <ImageButton android:id="@+id/prev" style="@style/MediaButton" android:contentDescription="@string/previous" android:src="@drawable/ic_prev" />
+                    <ImageButton android:id="@+id/play" style="@style/MediaButton" android:layout_marginStart="16dp" android:layout_marginEnd="16dp" android:contentDescription="@string/play_pause" android:src="@drawable/ic_pause" />
+                    <ImageButton android:id="@+id/next" style="@style/MediaButton" android:contentDescription="@string/next" android:src="@drawable/ic_next" />
+                </LinearLayout>
+            </LinearLayout>
+        </FrameLayout>
+
+        <TextView android:id="@+id/volume_label" style="@style/SliderLabel" android:layout_marginTop="28dp" />
+        <SeekBar android:id="@+id/volume" style="@style/Slider" android:max="100" />
+        <TextView android:id="@+id/brightness_label" style="@style/SliderLabel" android:layout_marginTop="20dp" />
+        <SeekBar android:id="@+id/brightness" style="@style/Slider" android:max="100" />
+
+        <View android:layout_width="match_parent" android:layout_height="1px" android:layout_marginTop="24dp" android:background="@color/line" />
+        <TextView android:id="@+id/clip_get" style="@style/Row" android:text="@string/clip_get" />
+        <View android:layout_width="match_parent" android:layout_height="1px" android:background="@color/line" />
+        <TextView android:id="@+id/clip_send" style="@style/Row" android:text="@string/clip_send" />
+        <View android:layout_width="match_parent" android:layout_height="1px" android:background="@color/line" />
+        <TextView android:id="@+id/open_link" style="@style/Row" android:text="@string/open_link" />
+        <View android:layout_width="match_parent" android:layout_height="1px" android:background="@color/line" />
+
+        <TextView
+            android:id="@+id/remote_message"
+            style="@style/Text"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:textColor="@color/text2"
+            android:textSize="14sp"
+            android:visibility="gone" />
+    </LinearLayout>
+</ScrollView>
