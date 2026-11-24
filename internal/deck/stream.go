@@ -13,7 +13,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Raindancer118/pocketsudo/protocol"
 	"github.com/pion/webrtc/v4"
 	"github.com/pion/webrtc/v4/pkg/media"
 	"github.com/pion/webrtc/v4/pkg/media/h264reader"
@@ -29,15 +28,11 @@ func defaultICE() []webrtc.ICEServer {
 
 // iceConfig adds the relay's TURN server (short-lived credentials) to STUN,
 // so mobile networks that block direct connections still work.
-func (a *Agent) iceConfig(ctx context.Context) []webrtc.ICEServer {
-	servers := append([]webrtc.ICEServer{}, a.iceServers...)
-	var c protocol.TurnCreds
-	tctx, cancel := context.WithTimeout(ctx, 5*time.Second)
-	defer cancel()
-	if _, err := a.client.Do(tctx, "GET", "/v1/channels/"+a.cfg.Channel+"/turn", nil, &c); err == nil && len(c.URLs) > 0 {
-		servers = append(servers, webrtc.ICEServer{URLs: c.URLs, Username: c.Username, Credential: c.Credential})
-	}
-	return servers
+// iceConfig: STUN only. The phone brings TURN; one relayed side is enough
+// (TURN permissions are per IP), and agent allocations, one per network
+// interface, used up coturn's quota.
+func (a *Agent) iceConfig(_ context.Context) []webrtc.ICEServer {
+	return append([]webrtc.ICEServer{}, a.iceServers...)
 }
 
 type streamer struct {
@@ -178,7 +173,9 @@ func (a *Agent) streamStart(ctx context.Context, body json.RawMessage) (json.Raw
 	if err := me.RegisterDefaultCodecs(); err != nil {
 		return nil, err
 	}
-	pc, err := webrtc.NewAPI(webrtc.WithMediaEngine(me)).NewPeerConnection(webrtc.Configuration{ICEServers: a.iceConfig(ctx)})
+	t0 := time.Now()
+	ice := a.iceConfig(ctx)
+	pc, err := webrtc.NewAPI(webrtc.WithMediaEngine(me)).NewPeerConnection(webrtc.Configuration{ICEServers: ice})
 	if err != nil {
 		return nil, err
 	}
@@ -248,6 +245,7 @@ func (a *Agent) streamStart(ctx context.Context, body json.RawMessage) (json.Raw
 	case <-gathered:
 	case <-time.After(8 * time.Second): // send what we have; host candidates come first
 	}
+	tGather := time.Since(t0)
 
 	a.mu.Lock()
 	a.stream = st
@@ -271,6 +269,8 @@ func (a *Agent) streamStart(ctx context.Context, body json.RawMessage) (json.Raw
 	if req.Source == "camera" {
 		w, h = 1280, 720
 	}
+	a.log.Info("stream answer", "gathered", tGather.Round(time.Millisecond),
+		"total", time.Since(t0).Round(time.Millisecond))
 	return ok(map[string]any{"answer": opusStereo(pc.LocalDescription().SDP), "width": w, "height": h})
 }
 

@@ -2,8 +2,12 @@ package deck
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
+	"github.com/Raindancer118/pocketsudo/internal/host"
 	"io"
+	"net/http"
+	"net/http/httptest"
 	"strings"
 	"sync"
 	"testing"
@@ -293,4 +297,23 @@ func TestSystemAudioArrivesAsOpusPackets(t *testing.T) {
 		}
 	}
 	result(t, r.send("stream.stop", nil, false))
+}
+
+// The phone brings TURN; one relayed side is enough (TURN permissions are per IP),
+// and every agent allocation per network interface ate into coturn's quota.
+func TestAgentUsesStunOnly(t *testing.T) {
+	r := newRig(t)
+	// a relay that does hand out TURN credentials
+	turn := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Write([]byte(`{"urls":["turn:turn.example:3478?transport=udp"],"username":"1:abc","credential":"x","ttl":3600}`))
+	}))
+	defer turn.Close()
+	r.agent.client = host.NewClient(turn.URL, "")
+	for _, s := range r.agent.iceConfig(context.Background()) {
+		for _, u := range s.URLs {
+			if strings.HasPrefix(u, "turn") {
+				t.Fatalf("agent gathers TURN: %v", u)
+			}
+		}
+	}
 }
