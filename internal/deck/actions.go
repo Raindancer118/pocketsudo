@@ -6,9 +6,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/Raindancer118/pocketsudo/protocol"
 	"net/url"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -44,6 +47,8 @@ func init() {
 		"session.close":  {fn: (*Agent).sessionClose},
 		"key":            {session: true, fn: (*Agent).pressKey},
 		"type":           {session: true, fn: (*Agent).typeText},
+		"screenshot":     {session: true, fn: (*Agent).screenshot},
+		"file.put":       {fn: (*Agent).filePut},
 	}
 }
 
@@ -371,6 +376,9 @@ func (a *Agent) clipboardSet(ctx context.Context, body json.RawMessage) (json.Ra
 	if len(p.Text) > maxClip {
 		return nil, errors.New("text too long for the clipboard")
 	}
+	a.mu.Lock()
+	a.lastClip = p.Text
+	a.mu.Unlock()
 	return nil, a.sys.Start(ctx, "wl-copy", "--", p.Text)
 }
 
@@ -512,4 +520,97 @@ func (a *Agent) typeText(ctx context.Context, body json.RawMessage) (json.RawMes
 	}
 	_, err := a.sys.Run(ctx, "wtype", "--", p.Text)
 	return nil, err
+}
+
+// ---- files ----
+
+func defaultDownloadDir() string {
+	home, _ := os.UserHomeDir()
+	if out, err := exec.Command("xdg-user-dir", "DOWNLOAD").Output(); err == nil && strings.TrimSpace(string(out)) != "" {
+		return filepath.Join(strings.TrimSpace(string(out)), "PocketDeck")
+	}
+	return filepath.Join(home, "Downloads", "PocketDeck")
+}
+
+// screenshot seals a JPEG of all screens into a blob for the phone.
+func (a *Agent) screenshot(ctx context.Context, _ json.RawMessage) (json.RawMessage, error) {
+	img, err := a.sys.Run(ctx, "grim", "-t", "jpeg", "-q", "85", "-")
+	if err != nil || len(img) == 0 {
+		return nil, fmt.Errorf("screenshot failed: %v", err)
+	}
+	id, err := a.upload(ctx, []byte(img))
+	if err != nil {
+		return nil, err
+	}
+	return ok(map[string]any{"blob": id, "size": len(img)})
+}
+
+func (a *Agent) upload(ctx context.Context, plain []byte) (string, error) {
+	box, err := protocol.SealBytes(a.key, plain)
+	if err != nil {
+		return "", err
+	}
+	var up protocol.BlobResp
+	if _, err := a.client.Raw(ctx, "PUT", "/v1/channels/"+a.cfg.Channel+"/blobs", box, &up); err != nil {
+		return "", fmt.Errorf("upload: %w", err)
+	}
+	return up.ID, nil
+}
+
+var unsafeName = regexp.MustCompile(`[^\p{L}\p{N} ._()\-]+`)
+
+// cleanName keeps a file name inside the download folder.
+func cleanName(name string) string {
+	n := filepath.Base(strings.ReplaceAll(name, "\\", "/"))
+	n = strings.TrimSpace(unsafeName.ReplaceAllString(n, "_"))
+	n = strings.TrimLeft(n, ".")
+	if n == "" || n == "_" {
+		n = "datei"
+	}
+	if len(n) > 120 {
+		n = n[len(n)-120:]
+	}
+	return n
+}
+
+func freePath(dir, name string) string {
+	p := filepath.Join(dir, name)
+	ext := filepath.Ext(name)
+	stem := strings.TrimSuffix(name, ext)
+	for i := 1; ; i++ {
+		if _, err := os.Lstat(p); errors.Is(err, os.ErrNotExist) {
+			return p
+		}
+		p = filepath.Join(dir, fmt.Sprintf("%s (%d)%s", stem, i, ext))
+	}
+}
+
+func (a *Agent) filePut(ctx context.Context, body json.RawMessage) (json.RawMessage, error) {
+	var p struct{ Blob, Name string }
+	if err := decode(body, &p); err != nil {
+		return nil, err
+	}
+	var box []byte
+	if _, err := a.client.Raw(ctx, "GET", "/v1/channels/"+a.cfg.Channel+"/blobs/"+p.Blob, nil, &box); err != nil {
+		return nil, fmt.Errorf("download: %w", err)
+	}
+	data, err := protocol.OpenBytes(a.key, box)
+	if err != nil {
+		return nil, errors.New("file could not be decrypted")
+	}
+	if err := os.MkdirAll(a.downloadDir, 0o755); err != nil {
+		return nil, err
+	}
+	path := freePath(a.downloadDir, cleanName(p.Name))
+	f, err := os.OpenFile(path, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o644)
+	if err != nil {
+		return nil, err
+	}
+	if _, err := f.Write(data); err != nil {
+		f.Close()
+		return nil, err
+	}
+	f.Close()
+	a.sys.Start(ctx, "notify-send", "-a", "PocketDeck", "Datei empfangen", filepath.Base(path))
+	return ok(map[string]string{"path": path})
 }

@@ -4,9 +4,9 @@
       project=":deck"/>
   <library
       name=":@@:core::debug"
-      jars="/home/tom/.gradle/caches/8.14.5/transforms/cf7b05b06430a05cc69b9a7c0f9d4784/transformed/out/jars/classes.jar:/home/tom/.gradle/caches/8.14.5/transforms/cf7b05b06430a05cc69b9a7c0f9d4784/transformed/out/jars/libs/R.jar"
+      jars="/home/tom/.gradle/caches/8.14.5/transforms/2bbd3edfed9d94e0aae6e748df8aa808/transformed/out/jars/classes.jar:/home/tom/.gradle/caches/8.14.5/transforms/2bbd3edfed9d94e0aae6e748df8aa808/transformed/out/jars/libs/R.jar"
       resolved="pocketsudo:core:unspecified"
-      folder="/home/tom/.gradle/caches/8.14.5/transforms/cf7b05b06430a05cc69b9a7c0f9d4784/transformed/out"
+      folder="/home/tom/.gradle/caches/8.14.5/transforms/2bbd3edfed9d94e0aae6e748df8aa808/transformed/out"
       manifest="AndroidManifest.xml"
       resFolder="res"
       assetsFolder="assets"

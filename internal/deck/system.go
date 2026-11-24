@@ -1,6 +1,7 @@
 package deck
 
 import (
+	"bufio"
 	"context"
 	"fmt"
 	"os"
@@ -83,4 +84,22 @@ func (d *Desktop) Start(_ context.Context, name string, args ...string) error {
 	}
 	go cmd.Wait()
 	return nil
+}
+
+func (d *Desktop) Stream(ctx context.Context, onLine func(string), name string, args ...string) error {
+	cmd := exec.CommandContext(ctx, name, args...)
+	cmd.Env = d.env
+	out, err := cmd.StdoutPipe()
+	if err != nil {
+		return err
+	}
+	if err := cmd.Start(); err != nil {
+		return err
+	}
+	sc := bufio.NewScanner(out)
+	sc.Buffer(make([]byte, 64<<10), 1<<20)
+	for sc.Scan() {
+		onLine(sc.Text())
+	}
+	return cmd.Wait()
 }

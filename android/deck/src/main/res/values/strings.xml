@@ -60,4 +60,14 @@
     <string name="combos">Shortcuts</string>
     <string name="sent">Sent</string>
     <string name="open_keyboard">Keyboard</string>
+    <string name="send_file">Send file</string>
+    <string name="screenshot">Screenshot</string>
+    <string name="share">Share</string>
+    <string name="share_target">Send to computer</string>
+    <string name="file_sent">File sent</string>
+    <string name="file_sending">Sending file …</string>
+    <string name="file_too_large">File too large (max. 24 MB)</string>
+    <string name="screenshot_taking">Taking screenshot …</string>
+    <string name="screenshot_saved">Saved in Pictures/PocketDeck</string>
+    <string name="needs_session">Open remote control under Keyboard first</string>
 </resources>

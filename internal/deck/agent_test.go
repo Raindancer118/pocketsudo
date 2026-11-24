@@ -9,6 +9,8 @@ import (
 	"log/slog"
 	"net/http/httptest"
 	"net/url"
+	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"sync"
@@ -25,6 +27,7 @@ type fakeSys struct {
 	mu    sync.Mutex
 	calls []string
 	out   map[string]string
+	lines chan string // what the clipboard watcher "sees"
 }
 
 func (f *fakeSys) Run(_ context.Context, name string, args ...string) (string, error) {
@@ -38,6 +41,25 @@ func (f *fakeSys) Run(_ context.Context, name string, args ...string) (string, e
 		}
 	}
 	return "", nil
+}
+
+func (f *fakeSys) Stream(ctx context.Context, onLine func(string), name string, args ...string) error {
+	f.mu.Lock()
+	f.calls = append(f.calls, strings.TrimSpace(name+" "+strings.Join(args, " ")))
+	lines := f.lines
+	f.mu.Unlock()
+	if lines == nil {
+		<-ctx.Done()
+		return ctx.Err()
+	}
+	for {
+		select {
+		case l := <-lines:
+			onLine(l)
+		case <-ctx.Done():
+			return ctx.Err()
+		}
+	}
 }
 
 func (f *fakeSys) Start(ctx context.Context, name string, args ...string) error {
@@ -102,7 +124,7 @@ func newRig(t *testing.T) *rig {
 	if err != nil {
 		t.Fatal(err)
 	}
-	sys := &fakeSys{out: map[string]string{
+	sys := &fakeSys{lines: make(chan string, 4), out: map[string]string{
 		"wpctl get-volume": "Volume: 0.62\n",
 		"brightnessctl -m": "intel_backlight,backlight,176,35%,496\n",
 		"pidof hyprlock":   "1234\n",
@@ -304,4 +326,93 @@ func TestKeyboardNeedsSession(t *testing.T) {
 	if res := result(t, r.send("key", map[string]string{"combo": "a"}, false)); res.OK {
 		t.Fatal("key after session.close")
 	}
+}
+
+func TestScreenshotAndFileTransfer(t *testing.T) {
+	r := newRig(t)
+	r.sys.out["grim"] = "\xff\xd8JPEGDATA"
+	r.sys.mu.Lock()
+	r.sys.mu.Unlock()
+	res := result(t, r.send("screenshot", nil, false))
+	if res.OK {
+		t.Fatal("screenshot without a remote session")
+	}
+	result(t, r.send("session.open", nil, true))
+	res = result(t, r.send("screenshot", nil, false))
+	if !res.OK {
+		t.Fatalf("screenshot: %+v", res)
+	}
+	var shot struct{ Blob string }
+	json.Unmarshal(res.Data, &shot)
+	var raw []byte
+	if _, err := r.phone.Raw(context.Background(), "GET", "/v1/channels/"+r.channel+"/blobs/"+shot.Blob, nil, &raw); err != nil {
+		t.Fatal(err)
+	}
+	plain, err := protocol.OpenBytes(r.key, raw)
+	if err != nil || string(plain) != "\xff\xd8JPEGDATA" {
+		t.Fatalf("screenshot blob: %v %q", err, plain)
+	}
+
+	// phone -> notebook: sealed upload, then file.put
+	dir := t.TempDir()
+	r.agent.downloadDir = dir
+	box, _ := protocol.SealBytes(r.key, []byte("hallo datei"))
+	var up protocol.BlobResp
+	if _, err := r.phone.Raw(context.Background(), "PUT", "/v1/channels/"+r.channel+"/blobs", box, &up); err != nil {
+		t.Fatal(err)
+	}
+	res = result(t, r.send("file.put", map[string]string{"blob": up.ID, "name": "../../evil/notiz.txt"}, false))
+	if !res.OK {
+		t.Fatalf("file.put: %+v", res)
+	}
+	got, err := os.ReadFile(filepath.Join(dir, "notiz.txt"))
+	if err != nil || string(got) != "hallo datei" {
+		t.Fatalf("saved file: %v %q", err, got)
+	}
+	// same name again does not overwrite
+	box2, _ := protocol.SealBytes(r.key, []byte("zweite"))
+	r.phone.Raw(context.Background(), "PUT", "/v1/channels/"+r.channel+"/blobs", box2, &up)
+	result(t, r.send("file.put", map[string]string{"blob": up.ID, "name": "notiz.txt"}, false))
+	if b, _ := os.ReadFile(filepath.Join(dir, "notiz (1).txt")); string(b) != "zweite" {
+		t.Fatal("second file overwrote the first or was not saved")
+	}
+}
+
+func TestClipboardFollowsToPhone(t *testing.T) {
+	r := newRig(t)
+	r.sys.lines <- base64.StdEncoding.EncodeToString([]byte("was schon drin war"))
+	r.sys.lines <- base64.StdEncoding.EncodeToString([]byte("kopiert am Notebook"))
+	m := r.awaitType("clipboard")
+	var body struct{ Text string }
+	json.Unmarshal(m.Body, &body)
+	if body.Text != "kopiert am Notebook" {
+		t.Fatalf("clipboard event %q", body.Text)
+	}
+	// what the phone just sent must not bounce back
+	result(t, r.send("clipboard.set", map[string]string{"text": "vom Handy"}, false))
+	r.sys.lines <- base64.StdEncoding.EncodeToString([]byte("vom Handy"))
+	r.sys.lines <- base64.StdEncoding.EncodeToString([]byte("danach"))
+	m = r.awaitType("clipboard")
+	json.Unmarshal(m.Body, &body)
+	if body.Text != "danach" {
+		t.Fatalf("echo not suppressed, got %q", body.Text)
+	}
+}
+
+func (r *rig) awaitType(typ string) protocol.DeckMessage {
+	r.t.Helper()
+	deadline := time.Now().Add(5 * time.Second)
+	for time.Now().Before(deadline) {
+		var in protocol.InboxResp
+		r.phone.Do(context.Background(), "GET", "/v1/channels/"+r.channel+"/inbox/phone?wait=2&after="+itoa(r.after), nil, &in)
+		for _, msg := range in.Messages {
+			r.after = msg.Seq
+			got, err := protocol.OpenMessage(r.key, msg.Box, time.Now(), nil)
+			if err == nil && got.Type == typ {
+				return got
+			}
+		}
+	}
+	r.t.Fatalf("no %s message", typ)
+	return protocol.DeckMessage{}
 }

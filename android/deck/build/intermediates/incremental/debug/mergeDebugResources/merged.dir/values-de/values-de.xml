@@ -67,6 +67,9 @@
     <string msgid="5912733858573823945" name="confirm_device_credential_password">"Passwort nutzen"</string>
     <string msgid="4776854077120974966" name="default_error_msg">"Unbekannter Fehler"</string>
     <string name="done">Fertig</string>
+    <string name="file_sending">Sendet Datei …</string>
+    <string name="file_sent">Datei gesendet</string>
+    <string name="file_too_large">Datei zu groß (max. 24 MB)</string>
     <string msgid="1072308044213194243" name="fingerprint_dialog_touch_sensor">"Fingerabdrucksensor berühren"</string>
     <string msgid="8216738333501875566" name="fingerprint_error_hw_not_available">"Fingerabdruckhardware nicht verfügbar."</string>
     <string msgid="6306988885793029438" name="fingerprint_error_hw_not_present">"Dieses Gerät hat keinen Fingerabdrucksensor"</string>
@@ -85,6 +88,7 @@
     <string name="locked">Gesperrt</string>
     <string name="locked_done">Gesperrt</string>
     <string name="modifiers">Gedrückt halten</string>
+    <string name="needs_session">Öffne zuerst die Fernsteuerung unter Tastatur</string>
     <string name="next">Weiter</string>
     <string name="no_answer">Keine Antwort – läuft pocketdeck auf dem Computer?</string>
     <string name="no_biometric">Richte zuerst einen Fingerabdruck auf diesem Handy ein</string>
@@ -109,11 +113,17 @@
     <string name="playing_on">Läuft auf %1$s</string>
     <string name="previous">Zurück</string>
     <string name="scan">Code scannen</string>
+    <string name="screenshot">Bildschirmfoto</string>
+    <string name="screenshot_saved">In Bilder/PocketDeck gespeichert</string>
+    <string name="screenshot_taking">Macht Bildschirmfoto …</string>
     <string msgid="6264217191555673260" name="search_menu_title">"Suche"</string>
+    <string name="send_file">Datei senden</string>
     <string name="sent">Gesendet</string>
     <string name="session_left">noch %1$d min</string>
     <string name="session_open">Fernsteuerung öffnen</string>
     <string name="session_open_hint">Ein Fingerabdruck öffnet die Tastatursteuerung für 15 Minuten</string>
+    <string name="share">Teilen</string>
+    <string name="share_target">An den Computer senden</string>
     <string msgid="6277540029070332960" name="status_bar_notification_info_overflow">"999+"</string>
     <string name="tab_remote">Fernbedienung</string>
     <string name="tab_start">Start</string>

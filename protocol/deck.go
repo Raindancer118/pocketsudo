@@ -76,6 +76,30 @@ func DeckKey(own *ecdh.PrivateKey, peerB64, channel string) ([]byte, error) {
 	return hkdf.Key(sha256.New, shared, []byte(channel), deckInfo, 32)
 }
 
+// SealBytes returns nonce || ciphertext+tag, for files (no base64 overhead).
+func SealBytes(key, plain []byte) ([]byte, error) {
+	gcm, err := newGCM(key)
+	if err != nil {
+		return nil, err
+	}
+	nonce := make([]byte, gcm.NonceSize())
+	if _, err := rand.Read(nonce); err != nil {
+		return nil, err
+	}
+	return gcm.Seal(nonce, nonce, plain, nil), nil
+}
+
+func OpenBytes(key, box []byte) ([]byte, error) {
+	gcm, err := newGCM(key)
+	if err != nil {
+		return nil, err
+	}
+	if len(box) < gcm.NonceSize()+gcm.Overhead() {
+		return nil, errors.New("box too short")
+	}
+	return gcm.Open(nil, box[:gcm.NonceSize()], box[gcm.NonceSize():], nil)
+}
+
 // Seal returns base64(nonce || ciphertext+tag).
 func Seal(key, plain []byte) (string, error) {
 	gcm, err := newGCM(key)

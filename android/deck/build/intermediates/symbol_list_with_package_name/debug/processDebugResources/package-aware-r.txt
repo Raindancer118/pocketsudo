@@ -707,6 +707,7 @@ drawable ic_call_answer_video_low
 drawable ic_call_decline
 drawable ic_call_decline_low
 drawable ic_clip
+drawable ic_file
 drawable ic_fingerprint
 drawable ic_fp_big
 drawable ic_home
@@ -721,6 +722,7 @@ drawable ic_pause
 drawable ic_play
 drawable ic_prev
 drawable ic_remote
+drawable ic_screen
 drawable ic_sun
 drawable notification_action_background
 drawable notification_bg
@@ -907,6 +909,7 @@ id right_icon
 id right_side
 id scan
 id screen
+id screenshot
 id scrollIndicatorDown
 id scrollIndicatorUp
 id scrollView
@@ -922,7 +925,9 @@ id search_src_text
 id search_voice_btn
 id select_dialog_listview
 id send
+id send_file
 id session
+id share
 id shortcut
 id showCustom
 id showHome
@@ -1033,6 +1038,7 @@ layout abc_tooltip
 layout activity_keyboard
 layout activity_main
 layout activity_pair
+layout activity_screenshot
 layout custom_dialog
 layout dialog_confirm
 layout fingerprint_dialog_layout
@@ -1124,6 +1130,9 @@ string confirm_device_credential_password
 string default_error_msg
 string done
 string fcm_fallback_notification_channel_label
+string file_sending
+string file_sent
+string file_too_large
 string fingerprint_dialog_touch_sensor
 string fingerprint_error_hw_not_available
 string fingerprint_error_hw_not_present
@@ -1142,6 +1151,7 @@ string lock
 string locked
 string locked_done
 string modifiers
+string needs_session
 string next
 string no_answer
 string no_biometric
@@ -1166,11 +1176,17 @@ string play_pause
 string playing_on
 string previous
 string scan
+string screenshot
+string screenshot_saved
+string screenshot_taking
 string search_menu_title
+string send_file
 string sent
 string session_left
 string session_open
 string session_open_hint
+string share
+string share_target
 string status_bar_notification_info_overflow
 string tab_remote
 string tab_start

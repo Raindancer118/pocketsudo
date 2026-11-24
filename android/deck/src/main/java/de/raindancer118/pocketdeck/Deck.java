@@ -103,6 +103,24 @@ final class Deck {
         startPolling();
     }
 
+    /** Seals and uploads bytes; blocking, call off the main thread. */
+    String upload(byte[] plain) throws IOException, GeneralSecurityException {
+        DeckStore.Pairing p = store.pairing();
+        if (p == null) throw new IOException(ctx.getString(R.string.not_paired));
+        return new Relay(p.relay, p.phoneToken).putBlob("/v1/channels/" + p.channel + "/blobs", DeckCrypto.sealBytes(key(p), plain));
+    }
+
+    /** Downloads and opens a sealed blob; blocking. */
+    byte[] download(String id) throws IOException, GeneralSecurityException {
+        DeckStore.Pairing p = store.pairing();
+        if (p == null) throw new IOException(ctx.getString(R.string.not_paired));
+        return DeckCrypto.openBytes(key(p), new Relay(p.relay, p.phoneToken).getBlob("/v1/channels/" + p.channel + "/blobs/" + id));
+    }
+
+    ExecutorService io() {
+        return io;
+    }
+
     synchronized void startPolling() {
         if (polling) return;
         polling = true;
@@ -115,21 +133,27 @@ final class Deck {
         if (poller != null) poller.interrupt();
     }
 
+    /** One fetch of the phone inbox; used by the push service while the app is closed. */
+    synchronized void pollOnce(int waitSeconds) throws IOException, JSONException {
+        DeckStore.Pairing p = store.pairing();
+        if (p == null) return;
+        Object r = new Relay(p.relay, p.phoneToken).call("GET",
+                "/v1/channels/" + p.channel + "/inbox/phone?wait=" + waitSeconds + "&after=" + p.after, null, (waitSeconds + 15) * 1000);
+        JSONArray msgs = ((JSONObject) r).optJSONArray("messages");
+        if (msgs == null || msgs.length() == 0) return;
+        for (int i = 0; i < msgs.length(); i++) {
+            JSONObject o = msgs.getJSONObject(i);
+            p.after = Math.max(p.after, o.getLong("seq"));
+            handle(p, o.getString("box"));
+        }
+        store.save(p);
+    }
+
     private void pollLoop() {
         while (polling) {
-            DeckStore.Pairing p = store.pairing();
-            if (p == null) return;
+            if (store.pairing() == null) return;
             try {
-                Object r = new Relay(p.relay, p.phoneToken).call("GET",
-                        "/v1/channels/" + p.channel + "/inbox/phone?wait=25&after=" + p.after, null, 40_000);
-                JSONArray msgs = ((JSONObject) r).optJSONArray("messages");
-                if (msgs == null || msgs.length() == 0) continue;
-                for (int i = 0; i < msgs.length(); i++) {
-                    JSONObject o = msgs.getJSONObject(i);
-                    p.after = Math.max(p.after, o.getLong("seq"));
-                    handle(p, o.getString("box"));
-                }
-                store.save(p);
+                pollOnce(25);
             } catch (IOException | JSONException | ClassCastException e) {
                 if (!polling) return;
                 try {
@@ -141,10 +165,24 @@ final class Deck {
         }
     }
 
+    /** Unsolicited events from the computer. */
+    private void event(DeckCrypto.Message m) throws JSONException {
+        if ("clipboard".equals(m.type)) {
+            String text = new JSONObject(m.body).optString("text");
+            if (text.isEmpty()) return;
+            // writing the clipboard is allowed in the background, only reading is not
+            main.post(() -> ctx.getSystemService(android.content.ClipboardManager.class)
+                    .setPrimaryClip(android.content.ClipData.newPlainText("PocketDeck", text)));
+        }
+    }
+
     private void handle(DeckStore.Pairing p, String box) {
         try {
             DeckCrypto.Message m = DeckCrypto.openMessage(key(p), box, System.currentTimeMillis(), seen);
-            if (m.ref == null) return;
+            if (m.ref == null) {
+                event(m);
+                return;
+            }
             Callback cb = pending.remove(m.ref);
             if (cb == null) return;
             JSONObject res = new JSONObject(m.body);

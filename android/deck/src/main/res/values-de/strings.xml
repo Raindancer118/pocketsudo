@@ -58,4 +58,14 @@
     <string name="combos">Kombinationen</string>
     <string name="sent">Gesendet</string>
     <string name="open_keyboard">Tastatur</string>
+    <string name="send_file">Datei senden</string>
+    <string name="screenshot">Bildschirmfoto</string>
+    <string name="share">Teilen</string>
+    <string name="share_target">An den Computer senden</string>
+    <string name="file_sent">Datei gesendet</string>
+    <string name="file_sending">Sendet Datei …</string>
+    <string name="file_too_large">Datei zu groß (max. 24 MB)</string>
+    <string name="screenshot_taking">Macht Bildschirmfoto …</string>
+    <string name="screenshot_saved">In Bilder/PocketDeck gespeichert</string>
+    <string name="needs_session">Öffne zuerst die Fernsteuerung unter Tastatur</string>
 </resources>

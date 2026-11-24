@@ -407,6 +407,9 @@
     <string name="default_error_msg">Unknown error</string>
     <string name="done">Done</string>
     <string name="fcm_fallback_notification_channel_label">Miscellaneous</string>
+    <string name="file_sending">Sending file …</string>
+    <string name="file_sent">File sent</string>
+    <string name="file_too_large">File too large (max. 24 MB)</string>
     <string name="fingerprint_dialog_touch_sensor">Touch the fingerprint sensor</string>
     <string name="fingerprint_error_hw_not_available">Fingerprint hardware not available.</string>
     <string name="fingerprint_error_hw_not_present">This device does not have a fingerprint sensor</string>
@@ -425,6 +428,7 @@
     <string name="locked">Locked</string>
     <string name="locked_done">Locked</string>
     <string name="modifiers">Hold</string>
+    <string name="needs_session">Open remote control under Keyboard first</string>
     <string name="next">Next</string>
     <string name="no_answer">No answer – is pocketdeck running on the computer?</string>
     <string name="no_biometric">Set up a fingerprint on this phone first</string>
@@ -449,11 +453,17 @@
     <string name="playing_on">Playing on %1$s</string>
     <string name="previous">Previous</string>
     <string name="scan">Scan code</string>
+    <string name="screenshot">Screenshot</string>
+    <string name="screenshot_saved">Saved in Pictures/PocketDeck</string>
+    <string name="screenshot_taking">Taking screenshot …</string>
     <string name="search_menu_title">Search</string>
+    <string name="send_file">Send file</string>
     <string name="sent">Sent</string>
     <string name="session_left">%1$d min</string>
     <string name="session_open">Open remote control</string>
     <string name="session_open_hint">One fingerprint opens keyboard control for 15 minutes</string>
+    <string name="share">Share</string>
+    <string name="share_target">Send to computer</string>
     <string name="status_bar_notification_info_overflow">999+</string>
     <string name="tab_remote">Remote</string>
     <string name="tab_start">Start</string>

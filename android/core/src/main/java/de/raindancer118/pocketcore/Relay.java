@@ -84,6 +84,55 @@ public final class Relay {
         return call("POST", path, body, 15000);
     }
 
+    /** PUT raw bytes (sealed files); returns the blob id. */
+    public String putBlob(String path, byte[] data) throws IOException {
+        HttpURLConnection c = (HttpURLConnection) new URL(base + path).openConnection();
+        try {
+            c.setRequestMethod("PUT");
+            c.setConnectTimeout(8000);
+            c.setReadTimeout(120_000);
+            c.setDoOutput(true);
+            c.setFixedLengthStreamingMode(data.length);
+            c.setRequestProperty("Content-Type", "application/octet-stream");
+            c.setRequestProperty("User-Agent", userAgent);
+            if (token != null) c.setRequestProperty("Authorization", "Bearer " + token);
+            try (OutputStream out = c.getOutputStream()) {
+                out.write(data);
+            }
+            int code = c.getResponseCode();
+            String text = read(code >= 400 ? c.getErrorStream() : c.getInputStream());
+            if (code >= 300) throw new HttpException(code, text);
+            return new JSONObject(text).getString("id");
+        } catch (JSONException e) {
+            throw new IOException(e);
+        } finally {
+            c.disconnect();
+        }
+    }
+
+    public byte[] getBlob(String path) throws IOException {
+        HttpURLConnection c = (HttpURLConnection) new URL(base + path).openConnection();
+        try {
+            c.setConnectTimeout(8000);
+            c.setReadTimeout(120_000);
+            c.setRequestProperty("User-Agent", userAgent);
+            if (token != null) c.setRequestProperty("Authorization", "Bearer " + token);
+            int code = c.getResponseCode();
+            if (code >= 300) throw new HttpException(code, read(c.getErrorStream()));
+            try (InputStream in = c.getInputStream(); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+                byte[] buf = new byte[64 << 10];
+                int n;
+                while ((n = in.read(buf)) > 0) {
+                    out.write(buf, 0, n);
+                    if (out.size() > 32 << 20) throw new IOException("file too large");
+                }
+                return out.toByteArray();
+            }
+        } finally {
+            c.disconnect();
+        }
+    }
+
     private static String read(InputStream in) throws IOException {
         if (in == null) return "";
         try (InputStream s = in; ByteArrayOutputStream out = new ByteArrayOutputStream()) {

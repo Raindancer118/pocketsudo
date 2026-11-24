@@ -126,6 +126,14 @@ public class MainActivity extends AppCompatActivity {
         row(R.id.clip_send, R.drawable.ic_clip, this::clipSend);
         row(R.id.open_link, R.drawable.ic_link, this::openLink);
         row(R.id.keyboard, R.drawable.ic_keyboard, () -> startActivity(new Intent(this, KeyboardActivity.class)));
+        androidx.activity.result.ActivityResultLauncher<String[]> pick = registerForActivityResult(
+                new androidx.activity.result.contract.ActivityResultContracts.OpenDocument(), uri -> {
+                    if (uri == null) return;
+                    say(remoteMessage, getString(R.string.file_sending));
+                    Transfer.sendFile(this, uri, (ok, err, data) -> say(remoteMessage, ok ? getString(R.string.file_sent) : err));
+                });
+        row(R.id.send_file, R.drawable.ic_file, () -> pick.launch(new String[]{"*/*"}));
+        row(R.id.screenshot, R.drawable.ic_screen, () -> startActivity(new Intent(this, ScreenshotActivity.class)));
     }
 
     @Override

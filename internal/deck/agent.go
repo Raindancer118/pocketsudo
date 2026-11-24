@@ -3,11 +3,13 @@ package deck
 import (
 	"context"
 	"crypto/ecdsa"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
 	"os"
+	"strings"
 	"sync"
 	"time"
 
@@ -19,6 +21,8 @@ import (
 type System interface {
 	Run(ctx context.Context, name string, args ...string) (string, error)
 	Start(ctx context.Context, name string, args ...string) error // detached, no output
+	// Stream runs a long-lived command and calls onLine for each output line.
+	Stream(ctx context.Context, onLine func(string), name string, args ...string) error
 }
 
 // Result is the body of every answer to the phone.
@@ -29,18 +33,20 @@ type Result struct {
 }
 
 type Agent struct {
-	cfg        *Config
-	sys        System
-	log        *slog.Logger
-	key        []byte
-	phonePub   *ecdsa.PublicKey
-	client     *host.Client
-	guard      *protocol.ReplayGuard
-	batteryDir string
-	hostname   string
+	cfg         *Config
+	sys         System
+	log         *slog.Logger
+	key         []byte
+	phonePub    *ecdsa.PublicKey
+	client      *host.Client
+	guard       *protocol.ReplayGuard
+	batteryDir  string
+	hostname    string
+	downloadDir string
 
 	mu           sync.Mutex
 	sessionUntil time.Time
+	lastClip     string // last text that came from the phone, so it is not echoed back
 }
 
 func NewAgent(cfg *Config, sys System, log *slog.Logger) (*Agent, error) {
@@ -62,12 +68,13 @@ func NewAgent(cfg *Config, sys System, log *slog.Logger) (*Agent, error) {
 	hn, _ := os.Hostname()
 	return &Agent{cfg: cfg, sys: sys, log: log, key: key, phonePub: pub,
 		client: host.NewClient(cfg.Relay, cfg.HostToken), guard: protocol.NewReplayGuard(),
-		batteryDir: "/sys/class/power_supply", hostname: hn}, nil
+		batteryDir: "/sys/class/power_supply", hostname: hn, downloadDir: defaultDownloadDir()}, nil
 }
 
 // Run long-polls the host inbox until ctx ends.
 func (a *Agent) Run(ctx context.Context) error {
 	a.log.Info("pocketdeck agent running", "relay", a.cfg.Relay, "phone", a.cfg.DeviceName)
+	go a.watchClipboard(ctx)
 	backoff := time.Second
 	for ctx.Err() == nil {
 		var in protocol.InboxResp
@@ -124,6 +131,62 @@ func (a *Agent) handle(ctx context.Context, box string) {
 		a.log.Info("action", "type", m.Type)
 	}
 	a.reply(ctx, m.ID, "result", res)
+}
+
+// clipWatchScript prints each new text clipboard as one base64 line. Copies
+// that password managers mark as secret are skipped.
+const clipWatchScript = `wl-paste --list-types 2>/dev/null | grep -qE 'x-kde-passwordManagerHint|PASSWORD' && exit 0; base64 -w0; echo`
+
+// watchClipboard pushes every new notebook clipboard text to the phone.
+func (a *Agent) watchClipboard(ctx context.Context) {
+	lastSent := ""
+	for ctx.Err() == nil {
+		first := true
+		err := a.sys.Stream(ctx, func(line string) {
+			// wl-paste --watch reports the current content once at start;
+			// that is not a new copy and must not wake the phone
+			if first {
+				first = false
+				if raw, err := base64.StdEncoding.DecodeString(strings.TrimSpace(line)); err == nil {
+					lastSent = string(raw)
+				}
+				return
+			}
+			raw, err := base64.StdEncoding.DecodeString(strings.TrimSpace(line))
+			if err != nil || len(raw) == 0 || len(raw) > maxClip {
+				return
+			}
+			text := string(raw)
+			a.mu.Lock()
+			echo := text == a.lastClip
+			if echo {
+				a.lastClip = ""
+			}
+			a.mu.Unlock()
+			if echo || text == lastSent {
+				return
+			}
+			lastSent = text
+			a.notify(ctx, "clipboard", map[string]string{"text": text})
+		}, "wl-paste", "--type", "text", "--watch", "sh", "-c", clipWatchScript)
+		if ctx.Err() != nil {
+			return
+		}
+		a.log.Warn("clipboard watcher stopped, restarting", "err", err)
+		sleepCtx(ctx, 10*time.Second)
+	}
+}
+
+// notify sends an unsolicited event to the phone and wakes it via push.
+func (a *Agent) notify(ctx context.Context, typ string, body any) {
+	b, _ := json.Marshal(body)
+	box, err := protocol.SealMessage(a.key, protocol.DeckMessage{ID: protocol.RandomID(16), Type: typ, Body: b}, time.Now())
+	if err != nil {
+		return
+	}
+	if _, err := a.client.Do(ctx, "POST", "/v1/channels/"+a.cfg.Channel+"/inbox/phone", protocol.InboxPost{Box: box, Push: true}, nil); err != nil {
+		a.log.Warn("notify", "type", typ, "err", err)
+	}
 }
 
 func (a *Agent) reply(ctx context.Context, ref, typ string, body any) {

@@ -71,3 +71,44 @@ func (c *Client) Do(ctx context.Context, method, path string, body, out any) (in
 	}
 	return resp.StatusCode, nil
 }
+
+// Raw sends body as-is (nil for none). out may be *[]byte for the raw
+// response or any JSON target.
+func (c *Client) Raw(ctx context.Context, method, path string, body []byte, out any) (int, error) {
+	var rd io.Reader
+	if body != nil {
+		rd = bytes.NewReader(body)
+	}
+	req, err := http.NewRequestWithContext(ctx, method, c.Base+path, rd)
+	if err != nil {
+		return 0, err
+	}
+	req.Header.Set("Content-Type", "application/octet-stream")
+	if c.Token != "" {
+		req.Header.Set("Authorization", "Bearer "+c.Token)
+	}
+	hc := *c.HTTP
+	hc.Timeout = 5 * time.Minute // files
+	resp, err := hc.Do(req)
+	if err != nil {
+		return 0, err
+	}
+	defer resp.Body.Close()
+	data, err := io.ReadAll(io.LimitReader(resp.Body, 32<<20))
+	if err != nil {
+		return resp.StatusCode, err
+	}
+	if resp.StatusCode >= 300 {
+		return resp.StatusCode, &HTTPError{resp.StatusCode, strings.TrimSpace(string(data))}
+	}
+	switch v := out.(type) {
+	case nil:
+	case *[]byte:
+		*v = data
+	default:
+		if err := json.Unmarshal(data, v); err != nil {
+			return resp.StatusCode, err
+		}
+	}
+	return resp.StatusCode, nil
+}
