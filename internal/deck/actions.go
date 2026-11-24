@@ -517,9 +517,18 @@ func (a *Agent) pressKey(ctx context.Context, body json.RawMessage) (json.RawMes
 			return nil, fmt.Errorf("unknown modifier %q", part)
 		}
 		if m, ok := modifiers[strings.ToLower(part)]; ok && len(parts) == 1 {
-			// a modifier on its own, e.g. Super to open the launcher
-			key = map[string]string{"logo": "Super_L", "ctrl": "Control_L", "alt": "Alt_L", "shift": "Shift_L", "altgr": "ISO_Level3_Shift"}[m]
-			continue
+			// Super alone means "launcher": vela directly when it runs
+			if m == "logo" {
+				if _, err := a.sys.Run(ctx, "vela", "status"); err == nil {
+					_, err = a.sys.Run(ctx, "vela", "toggle")
+					return nil, err
+				}
+			}
+			// otherwise the real evdev key: wtype's virtual keymap has other keycodes,
+			// and tap-Super binds match keycodes
+			code := map[string]string{"logo": "125", "ctrl": "29", "alt": "56", "shift": "42", "altgr": "100"}[m]
+			_, err := a.sys.Run(ctx, "ydotool", "key", code+":1", code+":0")
+			return nil, err
 		}
 		k, ok := keysym(part)
 		if !ok {

@@ -7,6 +7,7 @@ import (
 	"crypto/ecdsa"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"io"
 	"log/slog"
 	"net/http/httptest"
@@ -29,7 +30,8 @@ type fakeSys struct {
 	mu    sync.Mutex
 	calls []string
 	out   map[string]string
-	lines chan string // what the clipboard watcher "sees"
+	fail  map[string]bool // command prefixes that exit non-zero
+	lines chan string     // what the clipboard watcher "sees"
 	pipe  func(name string, args ...string) io.ReadCloser
 }
 
@@ -49,6 +51,11 @@ func (f *fakeSys) Run(_ context.Context, name string, args ...string) (string, e
 	defer f.mu.Unlock()
 	line := strings.TrimSpace(name + " " + strings.Join(args, " "))
 	f.calls = append(f.calls, line)
+	for prefix := range f.fail {
+		if strings.HasPrefix(line, prefix) {
+			return "", errors.New("exit status 1")
+		}
+	}
 	for prefix, out := range f.out {
 		if strings.HasPrefix(line, prefix) {
 			return out, nil
@@ -325,8 +332,14 @@ func TestKeyboardNeedsSession(t *testing.T) {
 		!r.sys.ran("wtype -M ctrl -M alt -k t -m alt -m ctrl") {
 		t.Fatalf("combo: %+v %v", res, r.sys.calls)
 	}
-	if res := result(t, r.send("key", map[string]string{"combo": "super"}, false)); !res.OK || !r.sys.ran("wtype -k Super_L") {
-		t.Fatalf("super: %+v %v", res, r.sys.calls)
+	// a lone Super opens the launcher: vela directly when it runs …
+	if res := result(t, r.send("key", map[string]string{"combo": "super"}, false)); !res.OK || !r.sys.ran("vela toggle") {
+		t.Fatalf("lone super with vela: %+v %v", res, r.sys.calls)
+	}
+	// … otherwise the real evdev key, so keycode-based tap-Super binds react (wtype's keymap differs)
+	r.sys.fail = map[string]bool{"vela": true}
+	if res := result(t, r.send("key", map[string]string{"combo": "super"}, false)); !res.OK || !r.sys.ran("ydotool key 125:1 125:0") {
+		t.Fatalf("lone super without vela: %+v %v", res, r.sys.calls)
 	}
 	if res := result(t, r.send("type", map[string]string{"text": "ls -la /tmp ü"}, false)); !res.OK || !r.sys.ran("wtype -- ls -la /tmp ü") {
 		t.Fatalf("type: %+v", res)
