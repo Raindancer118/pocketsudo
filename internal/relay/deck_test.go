@@ -2,6 +2,9 @@ package relay
 
 import (
 	"bytes"
+	"crypto/hmac"
+	"crypto/sha1"
+	"encoding/base64"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -187,5 +190,36 @@ func TestInboxSeqGrowsAcrossRestart(t *testing.T) {
 	e.do("GET", "/v1/channels/"+e.ch+"/inbox/host?after="+itoa(first.Seq), e.hostT, nil, &got)
 	if len(got.Messages) != 1 || got.Messages[0].Box != "B" {
 		t.Fatalf("message after restart not delivered: %+v", got)
+	}
+}
+
+func TestTurnCredentials(t *testing.T) {
+	p := &fakePusher{}
+	r, _ := New(Options{DataDir: t.TempDir(), Pusher: p, Logger: quiet, TurnSecret: "s3cret", TurnHost: "turn.example"})
+	e := &env{t: t, push: p, relay: r}
+	e.srv = newServer(t, r)
+	h, _ := protocol.GenerateKey()
+	ph, _ := protocol.GenerateKey()
+	e.host, e.phone = h, ph
+	e.pairDeck()
+	var c protocol.TurnCreds
+	if code := e.do("GET", "/v1/channels/"+e.ch+"/turn", e.phoneT, nil, &c); code != 200 {
+		t.Fatalf("turn: %d", code)
+	}
+	if len(c.URLs) == 0 || !strings.Contains(c.URLs[0], "turn.example:3478") || c.Username == "" || c.Credential == "" {
+		t.Fatalf("creds %+v", c)
+	}
+	// coturn's REST scheme: credential = base64(hmac-sha1(secret, username)), username = "<expiry>:<id>"
+	m := hmac.New(sha1.New, []byte("s3cret"))
+	m.Write([]byte(c.Username))
+	if base64.StdEncoding.EncodeToString(m.Sum(nil)) != c.Credential {
+		t.Fatal("credential does not follow the coturn REST scheme")
+	}
+	exp, _ := strconv.ParseInt(strings.SplitN(c.Username, ":", 2)[0], 10, 64)
+	if exp < time.Now().Unix() || exp > time.Now().Add(2*time.Hour).Unix() {
+		t.Fatalf("expiry %d not within the next 2 hours", exp)
+	}
+	if code := e.do("GET", "/v1/channels/"+e.ch+"/turn", "", nil, nil); code != 401 {
+		t.Fatalf("anonymous turn credentials: %d", code)
 	}
 }

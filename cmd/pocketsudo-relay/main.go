@@ -7,6 +7,7 @@
 //	FCM_SERVICE_ACCOUNT_JSON  the same, inline (for a docker .env)
 //	FCM_API_KEY, FCM_APP_ID, FCM_SENDER_ID  public Firebase client options for the app
 //	FCM_APP_ID_DECK   Firebase app id of the PocketDeck app (same project)
+//	TURN_SECRET, TURN_HOST  coturn shared secret and public host name (enables /turn)
 package main
 
 import (
@@ -40,7 +41,8 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	opts := relay.Options{DataDir: env("DATA_DIR", "data"), TrustProxy: os.Getenv("TRUST_PROXY") == "1", Logger: log}
+	opts := relay.Options{DataDir: env("DATA_DIR", "data"), TrustProxy: os.Getenv("TRUST_PROXY") == "1", Logger: log,
+		TurnSecret: os.Getenv("TURN_SECRET"), TurnHost: os.Getenv("TURN_HOST")}
 	sa := []byte(os.Getenv("FCM_SERVICE_ACCOUNT_JSON"))
 	if f := os.Getenv("FCM_SERVICE_ACCOUNT_FILE"); f != "" && len(sa) == 0 {
 		var err error

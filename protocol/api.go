@@ -101,3 +101,11 @@ type InboxResp struct {
 type BlobResp struct {
 	ID string `json:"id"`
 }
+
+// TurnCreds are short-lived credentials for the relay's TURN server.
+type TurnCreds struct {
+	URLs       []string `json:"urls"`
+	Username   string   `json:"username"`
+	Credential string   `json:"credential"`
+	TTL        int      `json:"ttl"`
+}

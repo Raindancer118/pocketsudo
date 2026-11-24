@@ -20,5 +20,30 @@ services:
     volumes:
       - pocketsudo-data:/data
 
+  # TURN for PocketDeck streams on networks that block direct connections.
+  # Host network: relay ports must be real ports (umaroth forwards 3478 + 49160-49200).
+  turn:
+    image: coturn/coturn:4.7
+    container_name: pocketsudo-turn
+    restart: unless-stopped
+    network_mode: host
+    mem_limit: 128m
+    env_file: .env
+    entrypoint: ["/bin/sh", "-c"]
+    # never relay into private networks: TURN must not become a door into the VMs
+    command:
+      - >-
+        exec turnserver -n --log-file=stdout --no-cli --no-tls --no-dtls --fingerprint
+        --listening-port=3478 --min-port=49160 --max-port=49200
+        --external-ip=65.21.15.243/10.20.0.12 --realm=$${TURN_HOST}
+        --use-auth-secret --static-auth-secret=$${TURN_SECRET}
+        --total-quota=40 --user-quota=6 --stale-nonce=600 --no-multicast-peers
+        --denied-peer-ip=0.0.0.0-0.255.255.255 --denied-peer-ip=10.0.0.0-10.255.255.255
+        --denied-peer-ip=100.64.0.0-100.127.255.255 --denied-peer-ip=127.0.0.0-127.255.255.255
+        --denied-peer-ip=169.254.0.0-169.254.255.255 --denied-peer-ip=172.16.0.0-172.31.255.255
+        --denied-peer-ip=192.168.0.0-192.168.255.255 --denied-peer-ip=65.21.15.243-65.21.15.243
+        --denied-peer-ip=::1 --denied-peer-ip=fc00::-fdff:ffff:ffff:ffff:ffff:ffff:ffff:ffff
+        --denied-peer-ip=fe80::-febf:ffff:ffff:ffff:ffff:ffff:ffff:ffff
+
 volumes:
   pocketsudo-data:

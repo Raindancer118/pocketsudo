@@ -5,6 +5,8 @@ package relay
 
 import (
 	"context"
+	"crypto/hmac"
+	"crypto/sha1"
 	"crypto/sha256"
 	"crypto/subtle"
 	"encoding/base64"
@@ -37,7 +39,9 @@ type Options struct {
 	Pusher     Pusher            // nil: no push, phone has to poll
 	FCMConfig  map[string]string // public Firebase client options handed to the app
 	FCMAppIDs  map[string]string // per-app Firebase app ids, e.g. "deck" -> 1:…:android:…
-	TrustProxy bool              // take the client IP from X-Real-IP / X-Forwarded-For
+	TurnSecret string            // coturn static-auth-secret; empty disables /turn
+	TurnHost   string
+	TrustProxy bool // take the client IP from X-Real-IP / X-Forwarded-For
 	Logger     *slog.Logger
 }
 
@@ -150,6 +154,7 @@ func New(opts Options) (*Server, error) {
 	m.HandleFunc("POST /v1/channels/{c}/inbox/{box}", s.withAny(s.inboxPost))
 	m.HandleFunc("GET /v1/channels/{c}/inbox/{box}", s.withAny(s.inboxGet))
 	m.HandleFunc("PUT /v1/channels/{c}/blobs", s.withAny(s.blobPut))
+	m.HandleFunc("GET /v1/channels/{c}/turn", s.withAny(s.turn))
 	m.HandleFunc("GET /v1/channels/{c}/blobs/{id}", s.withAny(s.blobGet))
 	s.mux = m
 	return s, nil
@@ -1003,4 +1008,23 @@ func (s *Server) blobGet(w http.ResponseWriter, r *http.Request, c *channel) {
 	defer f.Close()
 	w.Header().Set("Content-Type", "application/octet-stream")
 	io.Copy(w, f)
+}
+
+const turnTTL = time.Hour
+
+// turn hands paired devices short-lived TURN credentials (coturn REST
+// scheme), so the TURN server is no open proxy and no password ships in an app.
+func (s *Server) turn(w http.ResponseWriter, _ *http.Request, c *channel) {
+	if s.opts.TurnSecret == "" || s.opts.TurnHost == "" {
+		fail(w, http.StatusNotFound, "no TURN server configured")
+		return
+	}
+	user := strconv.FormatInt(time.Now().Add(turnTTL).Unix(), 10) + ":" + c.ID[:8]
+	m := hmac.New(sha1.New, []byte(s.opts.TurnSecret))
+	m.Write([]byte(user))
+	host := s.opts.TurnHost
+	writeJSON(w, 200, protocol.TurnCreds{
+		URLs:     []string{"turn:" + host + ":3478?transport=udp", "turn:" + host + ":3478?transport=tcp", "stun:" + host + ":3478"},
+		Username: user, Credential: base64.StdEncoding.EncodeToString(m.Sum(nil)), TTL: int(turnTTL.Seconds()),
+	})
 }
