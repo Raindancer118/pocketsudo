@@ -68,6 +68,7 @@ public class StreamActivity extends AppCompatActivity {
         if (pc != null && pc.connectionState() != PeerConnection.PeerConnectionState.CONNECTED) reconnect();
     };
     private final Zoom zoom = new Zoom();
+    private org.webrtc.audio.AudioDeviceModule adm;
     // two-finger gesture: decided once the fingers moved far enough
     private static final int TWO_NONE = 0, TWO_UNDECIDED = 1, TWO_PINCH = 2, TWO_SCROLL = 3;
     private int two = TWO_NONE;
@@ -77,6 +78,7 @@ public class StreamActivity extends AppCompatActivity {
     protected void onCreate(Bundle s) {
         super.onCreate(s);
         getWindow().setBackgroundDrawableResource(android.R.color.black);
+        setVolumeControlStream(android.media.AudioManager.STREAM_MUSIC);
         setContentView(R.layout.activity_stream);
         deck = Deck.get(this);
         video = findViewById(R.id.video);
@@ -163,6 +165,8 @@ public class StreamActivity extends AppCompatActivity {
         pc = null;
         video.release();
         if (factory != null) factory.dispose();
+        if (adm != null) adm.release();
+        adm = null;
         if (egl != null) egl.release();
         factory = null;
         egl = null;
@@ -315,6 +319,7 @@ public class StreamActivity extends AppCompatActivity {
         factory = PeerConnectionFactory.builder()
                 .setVideoDecoderFactory(new DefaultVideoDecoderFactory(egl.getEglBaseContext()))
                 .setVideoEncoderFactory(new DefaultVideoEncoderFactory(egl.getEglBaseContext(), true, true))
+                .setAudioDeviceModule(audioModule())
                 .createPeerConnectionFactory();
         video.init(egl.getEglBaseContext(), new RendererCommon.RendererEvents() {
             @Override
@@ -348,7 +353,7 @@ public class StreamActivity extends AppCompatActivity {
         pc.createOffer(new Sdp() {
             @Override
             public void onCreateSuccess(SessionDescription offer) {
-                pc.setLocalDescription(new Sdp(), offer);
+                pc.setLocalDescription(new Sdp(), new SessionDescription(offer.type, SdpTweaks.opusStereo(offer.description)));
             }
         }, new MediaConstraints());
     }
@@ -407,6 +412,23 @@ public class StreamActivity extends AppCompatActivity {
                 pickerMessage.setText(why);
             }
         });
+    }
+
+    /**
+     * Plays the computer's sound as media in stereo. WebRTC's default is a voice
+     * call: earpiece routing and speech processing, which garbles music.
+     */
+    private org.webrtc.audio.AudioDeviceModule audioModule() {
+        adm = org.webrtc.audio.JavaAudioDeviceModule.builder(this)
+                .setAudioAttributes(new android.media.AudioAttributes.Builder()
+                        .setUsage(android.media.AudioAttributes.USAGE_MEDIA)
+                        .setContentType(android.media.AudioAttributes.CONTENT_TYPE_MUSIC)
+                        .build())
+                .setUseStereoOutput(true)
+                .setUseHardwareAcousticEchoCanceler(false)
+                .setUseHardwareNoiseSuppressor(false)
+                .createAudioDeviceModule();
+        return adm;
     }
 
     private void restart() {
