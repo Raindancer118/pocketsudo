@@ -60,6 +60,13 @@ public class StreamActivity extends AppCompatActivity {
     private int frameW, frameH;
     private long lastMove;
     private float scrollAcc;
+    private static final int MAX_RECONNECTS = 3;
+    private int reconnects;
+    private boolean resumeStream;
+    private final android.os.Handler main = new android.os.Handler(android.os.Looper.getMainLooper());
+    private final Runnable checkDisconnected = () -> {
+        if (pc != null && pc.connectionState() != PeerConnection.PeerConnectionState.CONNECTED) reconnect();
+    };
     private final Zoom zoom = new Zoom();
     // two-finger gesture: decided once the fingers moved far enough
     private static final int TWO_NONE = 0, TWO_UNDECIDED = 1, TWO_PINCH = 2, TWO_SCROLL = 3;
@@ -119,14 +126,46 @@ public class StreamActivity extends AppCompatActivity {
     }
 
     @Override
+    protected void onStart() {
+        super.onStart();
+        if (resumeStream) {
+            // back from another app: the old surface and connection are gone, start fresh
+            resumeStream = false;
+            reconnects = 0;
+            state(getString(R.string.stream_connecting), R.drawable.dot_warn);
+            start();
+        }
+    }
+
+    @Override
+    protected void onStop() {
+        // nobody watches: stop capturing (data, and no camera or mic running unseen)
+        if (pc != null && !isFinishing()) {
+            deck.send("stream.stop", "{}", null);
+            teardown();
+            resumeStream = true;
+        }
+        super.onStop();
+    }
+
+    @Override
     protected void onDestroy() {
         deck.send("stream.stop", "{}", null);
+        teardown();
+        super.onDestroy();
+    }
+
+    private void teardown() {
+        main.removeCallbacks(checkDisconnected);
         if (input != null) input.close();
         if (pc != null) pc.close();
+        input = null;
+        pc = null;
         video.release();
         if (factory != null) factory.dispose();
         if (egl != null) egl.release();
-        super.onDestroy();
+        factory = null;
+        egl = null;
     }
 
     // ---- picker ----
@@ -371,14 +410,20 @@ public class StreamActivity extends AppCompatActivity {
     }
 
     private void restart() {
-        if (input != null) input.close();
-        if (pc != null) pc.close();
-        pc = null;
-        input = null;
-        video.release();
-        if (factory != null) factory.dispose();
-        if (egl != null) egl.release();
+        teardown();
         start();
+    }
+
+    /** Connection lost: try again a few times before giving up. */
+    private void reconnect() {
+        if (pc == null || isFinishing()) return;
+        if (reconnects >= MAX_RECONNECTS) {
+            state(getString(R.string.stream_failed), R.drawable.dot_off);
+            return;
+        }
+        reconnects++;
+        state(getString(R.string.stream_connecting), R.drawable.dot_warn);
+        restart();
     }
 
     private void state(String text, int dot) {
@@ -411,10 +456,13 @@ public class StreamActivity extends AppCompatActivity {
 
         @Override
         public void onConnectionChange(PeerConnection.PeerConnectionState s) {
-            // DISCONNECTED is often a short hiccup that heals itself; only FAILED is final
-            if (s == PeerConnection.PeerConnectionState.FAILED) {
-                runOnUiThread(() -> state(getString(R.string.stream_failed), R.drawable.dot_off));
-            }
+            // DISCONNECTED often heals by itself within a second or two; give it a moment
+            runOnUiThread(() -> {
+                main.removeCallbacks(checkDisconnected);
+                if (s == PeerConnection.PeerConnectionState.CONNECTED) reconnects = 0;
+                else if (s == PeerConnection.PeerConnectionState.FAILED) reconnect();
+                else if (s == PeerConnection.PeerConnectionState.DISCONNECTED) main.postDelayed(checkDisconnected, 4000);
+            });
         }
 
         @Override
