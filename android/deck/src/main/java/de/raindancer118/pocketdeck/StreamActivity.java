@@ -159,6 +159,7 @@ public class StreamActivity extends AppCompatActivity {
 
     private void teardown() {
         main.removeCallbacks(checkDisconnected);
+        main.removeCallbacks(sendOfferNow);
         if (input != null) input.close();
         if (pc != null) pc.close();
         input = null;
@@ -290,7 +291,29 @@ public class StreamActivity extends AppCompatActivity {
 
     // ---- WebRTC ----
 
+    private long t0;
+    /*
+     * The offer goes out as soon as it is useful, not when gathering is complete:
+     * Android only reports "complete" after every network (Wi-Fi, mobile IPv6) and
+     * every TURN transport answered or timed out, which takes seconds.
+     */
+    private static final long OFFER_MAX_WAIT_MS = 1500, OFFER_AFTER_PUBLIC_MS = 250;
+    private boolean offerSent;
+    private final Runnable sendOfferNow = () -> {
+        if (offerSent || pc == null) return;
+        SessionDescription local = pc.getLocalDescription();
+        if (local == null) return; // not set yet; the next trigger sends it
+        offerSent = true;
+        sendOffer(local.description);
+    };
+
+    /** Connection timing per step, to see where the seconds go (adb logcat -s PocketDeck). */
+    private void mark(String step) {
+        android.util.Log.i("PocketDeck", "stream " + step + " +" + (android.os.SystemClock.elapsedRealtime() - t0) + " ms");
+    }
+
     private void start() {
+        t0 = android.os.SystemClock.elapsedRealtime();
         if (source.isEmpty()) return;
         pickerMessage.setText(R.string.stream_connecting);
         // TURN credentials from the relay first (mobile networks), then connect
@@ -313,6 +336,8 @@ public class StreamActivity extends AppCompatActivity {
     }
 
     private void connect(List<PeerConnection.IceServer> ice) {
+        mark("turn creds");
+        offerSent = false;
         egl = EglBase.create();
         PeerConnectionFactory.initialize(PeerConnectionFactory.InitializationOptions.builder(getApplicationContext())
                 .createInitializationOptions());
@@ -326,6 +351,7 @@ public class StreamActivity extends AppCompatActivity {
         video.init(egl.getEglBaseContext(), new RendererCommon.RendererEvents() {
             @Override
             public void onFirstFrameRendered() {
+                mark("first frame");
                 runOnUiThread(() -> state(getString(R.string.stream_live), R.drawable.dot_live));
             }
 
@@ -356,12 +382,14 @@ public class StreamActivity extends AppCompatActivity {
             @Override
             public void onCreateSuccess(SessionDescription offer) {
                 pc.setLocalDescription(new Sdp(), new SessionDescription(offer.type, SdpTweaks.opusStereo(offer.description)));
+                main.postDelayed(sendOfferNow, OFFER_MAX_WAIT_MS);
             }
         }, new MediaConstraints());
     }
 
     /** Called once ICE gathering is complete: the offer carries all candidates. */
     private void sendOffer(String sdp) {
+        mark("offer gathered");
         String body;
         try {
             String[] src = sources.get(source);
@@ -387,6 +415,7 @@ public class StreamActivity extends AppCompatActivity {
                 return;
             }
             try {
+                mark("answer");
                 String sdpAnswer = new JSONObject(data).getString("answer");
                 pc.setRemoteDescription(new Sdp(), new SessionDescription(SessionDescription.Type.ANSWER, sdpAnswer));
                 picker.setVisibility(View.GONE);
@@ -466,10 +495,7 @@ public class StreamActivity extends AppCompatActivity {
     private class Observer implements PeerConnection.Observer {
         @Override
         public void onIceGatheringChange(PeerConnection.IceGatheringState s) {
-            if (s == PeerConnection.IceGatheringState.COMPLETE && pc.getLocalDescription() != null) {
-                String sdp = pc.getLocalDescription().description;
-                runOnUiThread(() -> sendOffer(sdp));
-            }
+            if (s == PeerConnection.IceGatheringState.COMPLETE) main.post(sendOfferNow);
         }
 
         @Override
@@ -480,6 +506,7 @@ public class StreamActivity extends AppCompatActivity {
 
         @Override
         public void onConnectionChange(PeerConnection.PeerConnectionState s) {
+            mark("connection " + s);
             // DISCONNECTED often heals by itself within a second or two; give it a moment
             runOnUiThread(() -> {
                 main.removeCallbacks(checkDisconnected);
@@ -503,6 +530,8 @@ public class StreamActivity extends AppCompatActivity {
 
         @Override
         public void onIceCandidate(IceCandidate c) {
+            // a public (srflx) or TURN path is enough to reach the computer from anywhere
+            if (c.sdp.contains(" typ srflx") || c.sdp.contains(" typ relay")) main.postDelayed(sendOfferNow, OFFER_AFTER_PUBLIC_MS);
         }
 
         @Override
