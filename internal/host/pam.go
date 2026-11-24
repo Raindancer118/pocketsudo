@@ -27,7 +27,9 @@ func InstallPAM(content, bin string, disableFprintd bool) (string, error) {
 	inserted := false
 	for _, l := range lines {
 		trimmed := strings.TrimSpace(l)
-		isAuth := strings.HasPrefix(trimmed, "auth") || strings.HasPrefix(trimmed, "-auth")
+		// Debian/Ubuntu pull the auth stack in via "@include common-auth"
+		isAuth := strings.HasPrefix(trimmed, "auth") || strings.HasPrefix(trimmed, "-auth") ||
+			trimmed == "@include common-auth"
 		if !inserted && isAuth {
 			out = append(out, PAMLine(bin))
 			inserted = true

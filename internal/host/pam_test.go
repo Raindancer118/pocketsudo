@@ -50,3 +50,27 @@ func TestInstallPAMRefusesOddFiles(t *testing.T) {
 		t.Fatal("installed into a file without auth lines")
 	}
 }
+
+const debianSudo = `#%PAM-1.0
+
+# Set up user limits from /etc/security/limits.conf.
+session    required   pam_limits.so
+
+@include common-auth
+@include common-account
+@include common-session-noninteractive
+`
+
+func TestInstallPAMDebianInclude(t *testing.T) {
+	got, err := InstallPAM(debianSudo, "/usr/local/bin/pocketsudo", true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	i, j := strings.Index(got, "pam_exec.so"), strings.Index(got, "@include common-auth")
+	if i < 0 || j < 0 || i > j {
+		t.Fatalf("helper must come right before common-auth:\n%s", got)
+	}
+	if back, _ := UninstallPAM(got); back != debianSudo {
+		t.Fatalf("uninstall did not restore:\n%q", back)
+	}
+}
