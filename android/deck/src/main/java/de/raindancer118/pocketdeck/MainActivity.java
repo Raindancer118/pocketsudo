@@ -49,13 +49,14 @@ public class MainActivity extends AppCompatActivity {
     private Deck deck;
     private final Handler main = new Handler(Looper.getMainLooper());
     private final ExecutorService io = Executors.newSingleThreadExecutor();
-    private View viewStart, viewRemote, viewEmpty, tabs, tabLine;
-    private TextView host, status, lockLabel, message, tabStart, tabRemote;
+    private View viewStart, viewRemote, viewShortcuts, viewEmpty, tabs, tabLine;
+    private TextView host, status, lockLabel, message, tabStart, tabRemote, tabShortcuts, shortcutMessage;
     private TextView playingOn, track, artist, volumeLabel, brightnessLabel, remoteMessage;
     private ImageButton lockButton, play;
     private ImageView cover;
     private SeekBar volume, brightness;
-    private boolean locked, remoteTab, dragging;
+    private boolean locked, dragging;
+    private int tab;
     private String coverUrl;
     private final Runnable refresher = new Runnable() {
         @Override
@@ -72,6 +73,9 @@ public class MainActivity extends AppCompatActivity {
         deck = Deck.get(this);
         viewStart = findViewById(R.id.view_start);
         viewRemote = findViewById(R.id.view_remote);
+        viewShortcuts = findViewById(R.id.view_shortcuts);
+        tabShortcuts = findViewById(R.id.tab_shortcuts);
+        shortcutMessage = findViewById(R.id.shortcut_message);
         viewEmpty = findViewById(R.id.view_empty);
         tabs = findViewById(R.id.tabs);
         tabLine = findViewById(R.id.tab_line);
@@ -106,8 +110,15 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        tabStart.setOnClickListener(v -> showTab(false));
-        tabRemote.setOnClickListener(v -> showTab(true));
+        tabStart.setOnClickListener(v -> showTab(0));
+        tabShortcuts.setOnClickListener(v -> showTab(1));
+        tabRemote.setOnClickListener(v -> showTab(2));
+        Ui.link(findViewById(R.id.templates));
+        findViewById(R.id.templates).setOnClickListener(v -> {
+            Shortcuts store = new Shortcuts(this);
+            for (Shortcuts.Shortcut sc : Shortcuts.templates(this)) store.save(sc);
+            renderShortcuts();
+        });
         lockButton.setOnClickListener(v -> {
             if (locked) unlock();
             else lockNow();
@@ -147,10 +158,12 @@ public class MainActivity extends AppCompatActivity {
         if (!paired) {
             viewStart.setVisibility(View.GONE);
             viewRemote.setVisibility(View.GONE);
+            viewShortcuts.setVisibility(View.GONE);
             return;
         }
         host.setText(deck.pairing().hostname);
-        showTab(remoteTab);
+        showTab(tab);
+        renderShortcuts();
         deck.startPolling();
         main.post(refresher);
     }
@@ -162,12 +175,87 @@ public class MainActivity extends AppCompatActivity {
         super.onPause();
     }
 
-    private void showTab(boolean remote) {
-        remoteTab = remote;
-        viewStart.setVisibility(remote ? View.GONE : View.VISIBLE);
-        viewRemote.setVisibility(remote ? View.VISIBLE : View.GONE);
-        styleTab(tabStart, !remote);
-        styleTab(tabRemote, remote);
+    private void showTab(int t) {
+        tab = t;
+        viewStart.setVisibility(t == 0 ? View.VISIBLE : View.GONE);
+        viewShortcuts.setVisibility(t == 1 ? View.VISIBLE : View.GONE);
+        viewRemote.setVisibility(t == 2 ? View.VISIBLE : View.GONE);
+        styleTab(tabStart, t == 0);
+        styleTab(tabShortcuts, t == 1);
+        styleTab(tabRemote, t == 2);
+    }
+
+    // ---- shortcuts ----
+
+    private void renderShortcuts() {
+        android.widget.LinearLayout grid = findViewById(R.id.grid);
+        grid.removeAllViews();
+        java.util.List<Shortcuts.Shortcut> list = new Shortcuts(this).all();
+        findViewById(R.id.templates).setVisibility(list.isEmpty() ? View.VISIBLE : View.GONE);
+        java.util.List<View> tiles = new java.util.ArrayList<>();
+        for (Shortcuts.Shortcut sc : list) tiles.add(shortcutTile(sc));
+        tiles.add(newTile());
+        android.widget.LinearLayout row = null;
+        for (int i = 0; i < tiles.size(); i++) {
+            if (i % 2 == 0) {
+                row = new android.widget.LinearLayout(this);
+                android.widget.LinearLayout.LayoutParams rlp = new android.widget.LinearLayout.LayoutParams(-1, dp(104));
+                rlp.bottomMargin = dp(12);
+                grid.addView(row, rlp);
+            }
+            android.widget.LinearLayout.LayoutParams lp = new android.widget.LinearLayout.LayoutParams(0, -1, 1f);
+            if (i % 2 == 0) lp.setMarginEnd(dp(12));
+            row.addView(tiles.get(i), lp);
+        }
+        if (tiles.size() % 2 == 1) row.addView(new View(this), new android.widget.LinearLayout.LayoutParams(0, -1, 1f));
+    }
+
+    private View shortcutTile(Shortcuts.Shortcut sc) {
+        View v = getLayoutInflater().inflate(R.layout.item_shortcut, (android.view.ViewGroup) findViewById(R.id.grid), false);
+        ((android.widget.ImageView) v.findViewById(R.id.icon)).setImageResource(iconRes(sc.icon));
+        ((TextView) v.findViewById(R.id.name)).setText(sc.name.isEmpty() ? getString(R.string.unnamed) : sc.name);
+        int n = sc.steps.size();
+        String meta = getResources().getQuantityString(R.plurals.steps_count, n, n);
+        if (sc.needsFinger()) meta += " · ⌁";
+        ((TextView) v.findViewById(R.id.meta)).setText(meta);
+        v.setOnClickListener(x -> {
+            say(shortcutMessage, getString(R.string.shortcut_running, sc.name));
+            v.performHapticFeedback(HapticFeedbackConstants.CONFIRM);
+            ShortcutRunner.run(this, sc, (ok, err, d) -> say(shortcutMessage, ok ? getString(R.string.shortcut_done, sc.name) : err));
+        });
+        v.setOnLongClickListener(x -> {
+            startActivity(new Intent(this, ShortcutEditActivity.class).putExtra("id", sc.id));
+            return true;
+        });
+        return v;
+    }
+
+    private View newTile() {
+        View v = getLayoutInflater().inflate(R.layout.item_shortcut, (android.view.ViewGroup) findViewById(R.id.grid), false);
+        ((android.widget.ImageView) v.findViewById(R.id.icon)).setImageResource(R.drawable.ic_plus);
+        ((TextView) v.findViewById(R.id.name)).setText(R.string.new_shortcut);
+        ((TextView) v.findViewById(R.id.meta)).setText("");
+        v.setOnClickListener(x -> startActivity(new Intent(this, ShortcutEditActivity.class)));
+        return v;
+    }
+
+    static int iconRes(String icon) {
+        switch (icon) {
+            case "code":
+                return R.drawable.ic_code;
+            case "moon":
+                return R.drawable.ic_moon;
+            case "screen":
+                return R.drawable.ic_screen;
+            case "lock":
+                return R.drawable.ic_lock;
+            default:
+                return R.drawable.ic_zap;
+        }
+    }
+
+    private int dp(int v) {
+        return Math.round(v * getResources().getDisplayMetrics().density);
     }
 
     private void styleTab(TextView t, boolean on) {

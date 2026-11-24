@@ -256,10 +256,16 @@ func (a *Agent) runChain(ctx context.Context, ch Chain, authed bool) error {
 			return fmt.Errorf("step %d (%s): %w", i+1, s.Type, errNeedsSession)
 		}
 	}
+	// keep going: one missing feature (say, no do-not-disturb daemon) should
+	// not cancel the rest of the routine; report what failed at the end
+	var failed []string
 	for i, s := range ch.Steps {
 		if _, err := actions[s.Type].fn(a, ctx, s.Args); err != nil {
-			return fmt.Errorf("step %d (%s): %w", i+1, s.Type, err)
+			failed = append(failed, fmt.Sprintf("step %d (%s): %v", i+1, s.Type, err))
 		}
+	}
+	if len(failed) > 0 {
+		return errors.New(strings.Join(failed, "; "))
 	}
 	return nil
 }

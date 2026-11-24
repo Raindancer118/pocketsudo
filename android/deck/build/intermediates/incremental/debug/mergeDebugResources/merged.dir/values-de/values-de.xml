@@ -1,5 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources xmlns:ns1="urn:oasis:names:tc:xliff:document:1.2">
+    <plurals name="steps_count">
+        <item quantity="one">1 Schritt</item>
+        <item quantity="other">%d Schritte</item>
+    </plurals>
     <string msgid="5976598919945601918" name="abc_action_bar_home_description">"Zur Startseite"</string>
     <string msgid="8388173803310557296" name="abc_action_bar_up_description">"Nach oben"</string>
     <string msgid="3937310113216875497" name="abc_action_menu_overflow_description">"Weitere Optionen"</string>
@@ -27,7 +31,10 @@
     <string msgid="8875138169939072951" name="abc_shareactionprovider_share_with">"Teilen mit"</string>
     <string msgid="9055268688411532828" name="abc_shareactionprovider_share_with_application">"Mit <ns1:g id="APPLICATION_NAME">%s</ns1:g> teilen"</string>
     <string msgid="1656852541809559762" name="abc_toolbar_collapse_description">"Minimieren"</string>
+    <string name="add_step">Schritt hinzufügen</string>
+    <string name="add_templates">Vorlagen hinzufügen</string>
     <string name="back">Zurück</string>
+    <string name="bio_run">%1$s ausführen</string>
     <string name="bio_session">Fernsteuerung für %1$s</string>
     <string name="bio_unlock">%1$s entsperren</string>
     <string name="brightness">Helligkeit  %1$d %%</string>
@@ -40,6 +47,7 @@
     <string msgid="59049573811482460" name="call_notification_screening_text">"Filter für eingehenden Anruf"</string>
     <string name="cancel">Abbrechen</string>
     <string name="charging">lädt</string>
+    <string name="choose_step">Schritt wählen</string>
     <string name="clip_empty">Die Zwischenablage des Handys enthält keinen Text</string>
     <string name="clip_got">Zwischenablage aufs Handy kopiert</string>
     <string name="clip_sent">Zwischenablage gesendet</string>
@@ -65,9 +73,13 @@
     <string name="common_signin_button_text_long">Über Google anmelden</string>
     <string msgid="5912733858573823945" name="confirm_device_credential_password">"Passwort nutzen"</string>
     <string msgid="4776854077120974966" name="default_error_msg">"Unbekannter Fehler"</string>
+    <string name="delete">Löschen</string>
+    <string name="delete_body">Der Kurzbefehl wird von diesem Handy entfernt. Startbildschirm-Icons und NFC-Sticker dafür funktionieren dann nicht mehr.</string>
+    <string name="delete_title">%1$s löschen?</string>
     <string name="done">Fertig</string>
     <string name="downloaded">%1$s in Downloads/PocketDeck</string>
     <string name="downloading">Lädt %1$s …</string>
+    <string name="edit_name">Name</string>
     <string name="file_sending">Sendet Datei …</string>
     <string name="file_sent">Datei gesendet</string>
     <string name="file_too_large">Datei zu groß (max. 24 MB)</string>
@@ -87,18 +99,33 @@
     <string name="key_invalid">Fingerabdrücke geändert – neu koppeln</string>
     <string name="keyboard">Tastatur</string>
     <string name="link_opened">Link geöffnet</string>
+    <string name="loading_apps">Lädt Apps …</string>
     <string name="lock">Sperren</string>
     <string name="locked">Gesperrt</string>
     <string name="locked_done">Gesperrt</string>
+    <string name="media_next">Weiter</string>
+    <string name="media_pause">Pause</string>
+    <string name="media_play">Abspielen</string>
+    <string name="media_play_pause">Abspielen/Pause</string>
+    <string name="media_previous">Zurück</string>
+    <string name="move_down">Nach unten</string>
+    <string name="move_up">Nach oben</string>
+    <string name="needs_finger_hint">Fragt beim Ausführen nach deinem Fingerabdruck</string>
     <string name="needs_session">Öffne zuerst die Fernsteuerung unter Tastatur</string>
+    <string name="new_shortcut">Neuer Kurzbefehl</string>
     <string name="next">Weiter</string>
+    <string name="nfc_done">Sticker beschrieben</string>
+    <string name="nfc_hold">Halte den Sticker an die Rückseite des Handys</string>
+    <string name="nfc_off">NFC ist aus oder nicht vorhanden</string>
     <string name="no_answer">Keine Antwort – läuft pocketdeck auf dem Computer?</string>
     <string name="no_biometric">Richte zuerst einen Fingerabdruck auf diesem Handy ein</string>
     <string name="no_link">Kein Link in der Zwischenablage</string>
     <string name="not_a_code">Kein PocketDeck-Code</string>
     <string name="not_paired">Noch nicht gekoppelt</string>
     <string name="nothing_playing">Es läuft nichts</string>
+    <string name="off">aus</string>
     <string name="offline">Nicht erreichbar</string>
+    <string name="on">an</string>
     <string name="on_computer">Auf dem Computer</string>
     <string name="pair_compare">Steht derselbe Code im Terminal?</string>
     <string name="pair_confirm_there">Dort mit y bestätigen</string>
@@ -109,9 +136,13 @@
     <string name="pair_rejected">Am Computer abgelehnt</string>
     <string name="pair_used">Code schon verwendet, pair am Computer neu starten</string>
     <string name="pair_wrong_host">Schlüssel des Computers passt nicht zum Code, abgebrochen</string>
+    <string name="pin_home">Auf den Startbildschirm</string>
     <string name="play_pause">Abspielen oder pausieren</string>
     <string name="playing_on">Läuft auf %1$s</string>
     <string name="previous">Zurück</string>
+    <string name="remove_step">Schritt entfernen</string>
+    <string name="run_now">Jetzt ausführen</string>
+    <string name="save">Speichern</string>
     <string name="scan">Code scannen</string>
     <string name="screenshot">Screenshot</string>
     <string name="screenshot_saved">In Bilder/PocketDeck gespeichert</string>
@@ -122,8 +153,25 @@
     <string name="session_open_hint">Ein Fingerabdruck öffnet die Tastatursteuerung für 15 Minuten</string>
     <string name="share">Teilen</string>
     <string name="share_target">An den Computer senden</string>
+    <string name="shortcut_done">%1$s ausgeführt</string>
+    <string name="shortcut_missing">Kurzbefehl nicht gefunden</string>
+    <string name="shortcut_running">Führt %1$s aus …</string>
+    <string name="shortcuts_hint">Antippen zum Ausführen, halten zum Bearbeiten</string>
     <string msgid="6277540029070332960" name="status_bar_notification_info_overflow">"999+"</string>
+    <string name="step_app">App öffnen</string>
+    <string name="step_brightness">Helligkeit</string>
+    <string name="step_command">Shell-Befehl</string>
+    <string name="step_dnd">Nicht stören</string>
+    <string name="step_key">Tasten drücken</string>
+    <string name="step_lock">Sperren</string>
+    <string name="step_media">Musik</string>
+    <string name="step_type">Text tippen</string>
+    <string name="step_url">Link öffnen</string>
+    <string name="step_volume">Lautstärke</string>
+    <string name="step_workspace">Workspace wechseln</string>
+    <string name="steps">Ablauf</string>
     <string name="tab_remote">Fernbedienung</string>
+    <string name="tab_shortcuts">Kurzbefehle</string>
     <string name="tab_start">Start</string>
     <string name="theme_toggle">Hell und dunkel wechseln</string>
     <string name="tile_clip_get">Ablage holen</string>
@@ -133,11 +181,22 @@
     <string name="tile_open_link">Link öffnen</string>
     <string name="tile_screenshot">Screenshot</string>
     <string name="tile_send_file">Hochladen</string>
+    <string name="tpl_evening">Feierabend</string>
+    <string name="tpl_present">Präsentation</string>
+    <string name="tpl_work">Arbeitsmodus</string>
     <string name="type_hint">Text eingeben …</string>
     <string name="type_send">Tippen</string>
     <string name="unlock">Entsperren</string>
     <string name="unlocked">Entsperrt</string>
     <string name="unlocked_done">Entsperrt</string>
+    <string name="unnamed">Ohne Namen</string>
     <string name="upload_here">Hier hochladen</string>
+    <string name="value_hint_cmd">Befehl</string>
+    <string name="value_hint_key">z. B. ctrl+alt+t</string>
+    <string name="value_hint_percent">Prozent</string>
+    <string name="value_hint_text">Text</string>
+    <string name="value_hint_url">https://…</string>
+    <string name="value_hint_workspace">Workspace-Nummer</string>
     <string name="volume">Lautstärke  %1$d %%</string>
+    <string name="write_nfc">Auf NFC-Sticker schreiben</string>
 </resources>

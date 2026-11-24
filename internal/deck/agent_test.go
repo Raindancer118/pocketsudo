@@ -505,3 +505,18 @@ func TestGermanKeysAndPunctuation(t *testing.T) {
 		}
 	}
 }
+
+func TestChainContinuesPastFailingStep(t *testing.T) {
+	r := newRig(t)
+	ch := Chain{Steps: []Step{
+		{Type: "volume.set", Args: json.RawMessage(`{"percent":999}`)}, // fails
+		{Type: "workspace", Args: json.RawMessage(`{"id":2}`)},
+	}}
+	res := result(t, r.send("run", ch, false))
+	if res.OK || !strings.Contains(res.Error, "step 1") {
+		t.Fatalf("failure not reported: %+v", res)
+	}
+	if !r.sys.ran("hyprctl dispatch hl.dsp.focus({ workspace = 2 })") {
+		t.Fatal("chain stopped at the failing step")
+	}
+}

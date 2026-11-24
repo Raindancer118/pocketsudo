@@ -128,6 +128,8 @@ public class ZoomImageView extends AppCompatImageView {
         setImageMatrix(draw);
     }
 
+    // clicks are reported through the gesture detector (onSingleTapConfirmed)
+    @android.annotation.SuppressLint("ClickableViewAccessibility")
     @Override
     public boolean onTouchEvent(MotionEvent e) {
         scaler.onTouchEvent(e);

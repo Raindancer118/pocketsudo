@@ -336,6 +336,10 @@
     <integer name="config_tooltipAnimTime">150</integer>
     <integer name="google_play_services_version">12451000</integer>
     <integer name="status_bar_notification_info_maxnum">999</integer>
+    <plurals name="steps_count">
+        <item quantity="one">1 step</item>
+        <item quantity="other">%d steps</item>
+    </plurals>
     <string name="abc_action_bar_home_description">Navigate home</string>
     <string name="abc_action_bar_up_description">Navigate up</string>
     <string name="abc_action_menu_overflow_description">More options</string>
@@ -363,10 +367,13 @@
     <string name="abc_shareactionprovider_share_with">Share with</string>
     <string name="abc_shareactionprovider_share_with_application">Share with <ns1:g example="Mail" id="application_name">%s</ns1:g></string>
     <string name="abc_toolbar_collapse_description">Collapse</string>
+    <string name="add_step">Add step</string>
+    <string name="add_templates">Add templates</string>
     <string name="androidx_startup" translatable="false">androidx.startup</string>
     <string name="app_name" translatable="false">PocketDeck</string>
     <string name="back">Back</string>
     <string name="battery" translatable="false">%1$d %%</string>
+    <string name="bio_run">Run %1$s</string>
     <string name="bio_session">Remote control for %1$s</string>
     <string name="bio_unlock">Unlock %1$s</string>
     <string name="brightness">Brightness  %1$d %%</string>
@@ -379,6 +386,7 @@
     <string name="call_notification_screening_text">Screening an incoming call</string>
     <string name="cancel">Cancel</string>
     <string name="charging">charging</string>
+    <string name="choose_step">Choose step</string>
     <string name="clip_empty">The phone clipboard holds no text</string>
     <string name="clip_got">Clipboard copied to this phone</string>
     <string name="clip_sent">Clipboard sent</string>
@@ -404,9 +412,13 @@
     <string name="common_signin_button_text_long">Sign in with Google</string>
     <string name="confirm_device_credential_password">Use password</string>
     <string name="default_error_msg">Unknown error</string>
+    <string name="delete">Delete</string>
+    <string name="delete_body">The shortcut is removed from this phone. Home-screen icons and NFC stickers for it stop working.</string>
+    <string name="delete_title">Delete %1$s?</string>
     <string name="done">Done</string>
     <string name="downloaded">%1$s in Downloads/PocketDeck</string>
     <string name="downloading">Downloading %1$s …</string>
+    <string name="edit_name">Name</string>
     <string name="fcm_fallback_notification_channel_label">Miscellaneous</string>
     <string name="file_sending">Sending file …</string>
     <string name="file_sent">File sent</string>
@@ -427,18 +439,33 @@
     <string name="key_invalid">Fingerprints changed – pair again</string>
     <string name="keyboard">Keyboard</string>
     <string name="link_opened">Link opened</string>
+    <string name="loading_apps">Loading apps …</string>
     <string name="lock">Lock</string>
     <string name="locked">Locked</string>
     <string name="locked_done">Locked</string>
+    <string name="media_next">Next</string>
+    <string name="media_pause">Pause</string>
+    <string name="media_play">Play</string>
+    <string name="media_play_pause">Play/pause</string>
+    <string name="media_previous">Previous</string>
+    <string name="move_down">Move down</string>
+    <string name="move_up">Move up</string>
+    <string name="needs_finger_hint">Asks for your fingerprint when it runs</string>
     <string name="needs_session">Open remote control under Keyboard first</string>
+    <string name="new_shortcut">New shortcut</string>
     <string name="next">Next</string>
+    <string name="nfc_done">Sticker written</string>
+    <string name="nfc_hold">Hold the sticker to the back of the phone</string>
+    <string name="nfc_off">NFC is off or not available</string>
     <string name="no_answer">No answer – is pocketdeck running on the computer?</string>
     <string name="no_biometric">Set up a fingerprint on this phone first</string>
     <string name="no_link">No link in the clipboard</string>
     <string name="not_a_code">Not a PocketDeck code</string>
     <string name="not_paired">Not paired yet</string>
     <string name="nothing_playing">Nothing playing</string>
+    <string name="off">off</string>
     <string name="offline">Not reachable</string>
+    <string name="on">on</string>
     <string name="on_computer">On the computer</string>
     <string name="pair_compare">Same code in the terminal?</string>
     <string name="pair_confirm_there">Confirm there with y</string>
@@ -449,9 +476,13 @@
     <string name="pair_rejected">Rejected on the computer</string>
     <string name="pair_used">Code already used, start pair again on the computer</string>
     <string name="pair_wrong_host">The computer\'s key doesn\'t match the code, aborted</string>
+    <string name="pin_home">Add to home screen</string>
     <string name="play_pause">Play or pause</string>
     <string name="playing_on">Playing on %1$s</string>
     <string name="previous">Previous</string>
+    <string name="remove_step">Remove step</string>
+    <string name="run_now">Run now</string>
+    <string name="save">Save</string>
     <string name="scan">Scan code</string>
     <string name="screenshot">Screenshot</string>
     <string name="screenshot_saved">Saved in Pictures/PocketDeck</string>
@@ -462,8 +493,25 @@
     <string name="session_open_hint">One fingerprint opens keyboard control for 15 minutes</string>
     <string name="share">Share</string>
     <string name="share_target">Send to computer</string>
+    <string name="shortcut_done">%1$s done</string>
+    <string name="shortcut_missing">Shortcut not found</string>
+    <string name="shortcut_running">Running %1$s …</string>
+    <string name="shortcuts_hint">Tap to run, hold to edit</string>
     <string name="status_bar_notification_info_overflow">999+</string>
+    <string name="step_app">Open app</string>
+    <string name="step_brightness">Brightness</string>
+    <string name="step_command">Shell command</string>
+    <string name="step_dnd">Do not disturb</string>
+    <string name="step_key">Press keys</string>
+    <string name="step_lock">Lock</string>
+    <string name="step_media">Music</string>
+    <string name="step_type">Type text</string>
+    <string name="step_url">Open link</string>
+    <string name="step_volume">Volume</string>
+    <string name="step_workspace">Switch workspace</string>
+    <string name="steps">Steps</string>
     <string name="tab_remote">Remote</string>
+    <string name="tab_shortcuts">Shortcuts</string>
     <string name="tab_start">Start</string>
     <string name="theme_toggle">Switch light and dark</string>
     <string name="tile_clip_get">Get clipboard</string>
@@ -473,13 +521,24 @@
     <string name="tile_open_link">Open link</string>
     <string name="tile_screenshot">Screenshot</string>
     <string name="tile_send_file">Upload</string>
+    <string name="tpl_evening">Evening</string>
+    <string name="tpl_present">Presentation</string>
+    <string name="tpl_work">Work mode</string>
     <string name="type_hint">Type text …</string>
     <string name="type_send">Type</string>
     <string name="unlock">Unlock</string>
     <string name="unlocked">Unlocked</string>
     <string name="unlocked_done">Unlocked</string>
+    <string name="unnamed">Unnamed</string>
     <string name="upload_here">Upload here</string>
+    <string name="value_hint_cmd">Command</string>
+    <string name="value_hint_key">e.g. ctrl+alt+t</string>
+    <string name="value_hint_percent">Percent</string>
+    <string name="value_hint_text">Text</string>
+    <string name="value_hint_url">https://…</string>
+    <string name="value_hint_workspace">Workspace number</string>
     <string name="volume">Volume  %1$d %%</string>
+    <string name="write_nfc">Write to NFC sticker</string>
     <style name="AlertDialog.AppCompat" parent="Base.AlertDialog.AppCompat"/>
     <style name="AlertDialog.AppCompat.Light" parent="Base.AlertDialog.AppCompat.Light"/>
     <style name="Animation.AppCompat.Dialog" parent="Base.Animation.AppCompat.Dialog"/>

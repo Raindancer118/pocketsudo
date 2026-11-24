@@ -35,6 +35,7 @@
         android:layout_weight="1">
 
         <include android:id="@+id/view_start" layout="@layout/view_start" />
+        <include android:id="@+id/view_shortcuts" layout="@layout/view_shortcuts" android:visibility="gone" />
         <include android:id="@+id/view_remote" layout="@layout/view_remote" android:visibility="gone" />
         <include android:id="@+id/view_empty" layout="@layout/view_empty" android:visibility="gone" />
     </FrameLayout>
@@ -57,6 +58,13 @@
             style="@style/Tab"
             android:text="@string/tab_start"
             app:drawableTopCompat="@drawable/ic_home"
+            xmlns:app="http://schemas.android.com/apk/res-auto" />
+
+        <TextView
+            android:id="@+id/tab_shortcuts"
+            style="@style/Tab"
+            android:text="@string/tab_shortcuts"
+            app:drawableTopCompat="@drawable/ic_zap"
             xmlns:app="http://schemas.android.com/apk/res-auto" />
 
         <TextView
