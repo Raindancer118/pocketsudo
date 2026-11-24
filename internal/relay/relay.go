@@ -901,7 +901,8 @@ func (s *Server) inboxPost(w http.ResponseWriter, r *http.Request, c *channel) {
 		return
 	}
 	ib := s.inboxLocked(c.ID + "/" + box)
-	ib.next++
+	// time-based so the numbers keep growing across relay restarts
+	ib.next = max(ib.next+1, time.Now().UnixMicro())
 	ib.msgs = append(ib.msgs, inboxMsg{seq: ib.next, box: req.Box, at: time.Now()})
 	if len(ib.msgs) > inboxMax {
 		ib.msgs = ib.msgs[len(ib.msgs)-inboxMax:]

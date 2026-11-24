@@ -47,6 +47,7 @@ final class Deck {
     private final Handler main = new Handler(Looper.getMainLooper());
     private final Map<String, Callback> pending = new ConcurrentHashMap<>();
     private final Set<String> seen = new HashSet<>();
+    private final Object inboxLock = new Object();
     private volatile boolean polling;
     /** Remote-control session (keyboard, screen), as granted by the agent. */
     volatile long sessionUntil;
@@ -133,8 +134,17 @@ final class Deck {
         if (poller != null) poller.interrupt();
     }
 
-    /** One fetch of the phone inbox; used by the push service while the app is closed. */
-    synchronized void pollOnce(int waitSeconds) throws IOException, JSONException {
+    /**
+     * One fetch of the phone inbox (also used by the push service). Its own
+     * lock: holding the Deck monitor during a 25 s long poll froze the UI.
+     */
+    void pollOnce(int waitSeconds) throws IOException, JSONException {
+        synchronized (inboxLock) {
+            fetchInbox(waitSeconds);
+        }
+    }
+
+    private void fetchInbox(int waitSeconds) throws IOException, JSONException {
         DeckStore.Pairing p = store.pairing();
         if (p == null) return;
         Object r = new Relay(p.relay, p.phoneToken).call("GET",

@@ -166,3 +166,26 @@ func newServer(t *testing.T, h http.Handler) *httptest.Server {
 	t.Cleanup(s.Close)
 	return s
 }
+
+// Clients keep their "after" cursor across relay restarts; sequence numbers
+// must keep growing or every later message is invisible (happened 24.11.2026).
+func TestInboxSeqGrowsAcrossRestart(t *testing.T) {
+	e := newEnv(t).pairDeck()
+	var first protocol.InboxPostResp
+	e.do("POST", "/v1/channels/"+e.ch+"/inbox/host", e.phoneT, protocol.InboxPost{Box: "A"}, &first)
+	r2, err := New(Options{DataDir: e.relay.opts.DataDir, Logger: quiet})
+	if err != nil {
+		t.Fatal(err)
+	}
+	e.srv.Config.Handler = r2
+	var second protocol.InboxPostResp
+	e.do("POST", "/v1/channels/"+e.ch+"/inbox/host", e.phoneT, protocol.InboxPost{Box: "B"}, &second)
+	if second.Seq <= first.Seq {
+		t.Fatalf("seq went backwards after restart: %d -> %d", first.Seq, second.Seq)
+	}
+	var got protocol.InboxResp
+	e.do("GET", "/v1/channels/"+e.ch+"/inbox/host?after="+itoa(first.Seq), e.hostT, nil, &got)
+	if len(got.Messages) != 1 || got.Messages[0].Box != "B" {
+		t.Fatalf("message after restart not delivered: %+v", got)
+	}
+}
