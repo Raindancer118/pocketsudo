@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"math"
+	"regexp"
 	"sort"
 	"strings"
 	"sync"
@@ -16,7 +17,6 @@ import (
 	"github.com/pion/webrtc/v4"
 	"github.com/pion/webrtc/v4/pkg/media"
 	"github.com/pion/webrtc/v4/pkg/media/h264reader"
-	"github.com/pion/webrtc/v4/pkg/media/oggreader"
 )
 
 // Screen, camera and sound go straight to the phone over WebRTC. The deck
@@ -195,7 +195,9 @@ func (a *Agent) streamStart(ctx context.Context, body json.RawMessage) (json.Raw
 	}
 	var audio *webrtc.TrackLocalStaticSample
 	if req.Audio == "system" || req.Audio == "mic" {
-		audio, err = webrtc.NewTrackLocalStaticSample(webrtc.RTPCodecCapability{MimeType: webrtc.MimeTypeOpus}, "audio", "pocketdeck")
+		// stereo: music and videos, not a phone call
+		audio, err = webrtc.NewTrackLocalStaticSample(webrtc.RTPCodecCapability{MimeType: webrtc.MimeTypeOpus,
+			ClockRate: 48000, Channels: 2, SDPFmtpLine: "minptime=10;useinbandfec=1;stereo=1;sprop-stereo=1"}, "audio", "pocketdeck")
 		if err == nil {
 			_, err = pc.AddTrack(audio)
 		}
@@ -269,7 +271,7 @@ func (a *Agent) streamStart(ctx context.Context, body json.RawMessage) (json.Raw
 	if req.Source == "camera" {
 		w, h = 1280, 720
 	}
-	return ok(map[string]any{"answer": pc.LocalDescription().SDP, "width": w, "height": h})
+	return ok(map[string]any{"answer": opusStereo(pc.LocalDescription().SDP), "width": w, "height": h})
 }
 
 func (a *Agent) stopStream() {
@@ -400,31 +402,24 @@ func (a *Agent) pumpAudio(ctx context.Context, track *webrtc.TrackLocalStaticSam
 	if which == "mic" {
 		src = "default"
 	}
-	rc, err := a.sys.Pipe(ctx, "ffmpeg", "-hide_banner", "-loglevel", "error", "-f", "pulse", "-i", src,
-		"-c:a", "libopus", "-b:a", "96k", "-page_duration", "20000", "-f", "ogg", "-")
+	// 48 kHz stereo, 20 ms frames, music mode; short pages keep the delay low
+	rc, err := a.sys.Pipe(ctx, "ffmpeg", "-hide_banner", "-loglevel", "error", "-fflags", "nobuffer",
+		"-f", "pulse", "-i", src, "-ar", "48000", "-ac", "2",
+		"-c:a", "libopus", "-b:a", "128k", "-application", "audio", "-frame_duration", "20",
+		"-page_duration", "20000", "-f", "ogg", "-")
 	if err != nil {
 		a.log.Warn("audio capture", "err", err)
 		return
 	}
 	defer rc.Close()
-	ogg, _, err := oggreader.NewWith(rc)
-	if err != nil {
-		return
-	}
-	var last uint64
-	for ctx.Err() == nil {
-		page, hdr, err := ogg.ParseNextPage()
-		if err != nil {
-			return
+	err = oggPackets(rc, func(pkt []byte) error {
+		if ctx.Err() != nil {
+			return ctx.Err()
 		}
-		samples := hdr.GranulePosition - last
-		last = hdr.GranulePosition
-		if samples == 0 || samples > 48000 {
-			samples = 960
-		}
-		if err := track.WriteSample(media.Sample{Data: page, Duration: time.Duration(samples) * time.Second / 48000}); err != nil {
-			return
-		}
+		return track.WriteSample(media.Sample{Data: pkt, Duration: opusDuration(pkt)})
+	})
+	if err != nil && ctx.Err() == nil {
+		a.log.Warn("audio stream", "err", err)
 	}
 }
 
@@ -475,3 +470,25 @@ func (a *Agent) input(ctx context.Context, mon monitor, raw []byte) {
 }
 
 func clamp01(v float64) float64 { return math.Max(0, math.Min(1, v)) }
+
+var opusRtpmap = regexp.MustCompile(`(?m)^a=rtpmap:(\d+) opus/48000/2`)
+
+// opusStereo marks the Opus codec as stereo in an SDP. pion answers with its
+// registry's mono-default fmtp; without stereo=1 Android plays the sound as a
+// downmixed voice call.
+func opusStereo(sdp string) string {
+	m := opusRtpmap.FindStringSubmatch(sdp)
+	if m == nil {
+		return sdp
+	}
+	fmtp := regexp.MustCompile(`(?m)^(a=fmtp:` + m[1] + ` [^\r\n]*)`)
+	if loc := fmtp.FindStringIndex(sdp); loc != nil {
+		line := sdp[loc[0]:loc[1]]
+		if strings.Contains(line, "stereo=1") {
+			return sdp
+		}
+		return sdp[:loc[1]] + ";stereo=1;sprop-stereo=1" + sdp[loc[1]:]
+	}
+	i := strings.Index(sdp, m[0]) + len(m[0])
+	return sdp[:i] + "\r\na=fmtp:" + m[1] + " stereo=1;sprop-stereo=1" + sdp[i:]
+}

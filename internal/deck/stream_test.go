@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"io"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -227,4 +228,69 @@ func TestSwitchSourceDuringStream(t *testing.T) {
 	if res := result(t, r.send("stream.switch", map[string]string{"source": "camera", "device": "/etc/passwd"}, true)); res.OK {
 		t.Fatal("accepted a non-camera device")
 	}
+}
+
+func TestSystemAudioArrivesAsOpusPackets(t *testing.T) {
+	r := newRig(t)
+	r.agent.iceServers = nil
+	r.sys.out["hyprctl monitors -j"] = `[{"name":"eDP-1","x":0,"y":0,"width":1920,"height":1080,"scale":1}]`
+	r.sys.pipe = func(name string, args ...string) io.ReadCloser {
+		if name == "ffmpeg" {
+			return newFakeOpus()
+		}
+		return &liveFeed{left: 300}
+	}
+	result(t, r.send("session.open", nil, true))
+
+	pc, err := webrtc.NewPeerConnection(webrtc.Configuration{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { pc.Close() })
+	pc.AddTransceiverFromKind(webrtc.RTPCodecTypeVideo, webrtc.RTPTransceiverInit{Direction: webrtc.RTPTransceiverDirectionRecvonly})
+	pc.AddTransceiverFromKind(webrtc.RTPCodecTypeAudio, webrtc.RTPTransceiverInit{Direction: webrtc.RTPTransceiverDirectionRecvonly})
+	sizes := make(chan int, 16)
+	pc.OnTrack(func(tr *webrtc.TrackRemote, _ *webrtc.RTPReceiver) {
+		if tr.Kind() != webrtc.RTPCodecTypeAudio {
+			return
+		}
+		for {
+			p, _, err := tr.ReadRTP()
+			if err != nil {
+				return
+			}
+			select {
+			case sizes <- len(p.Payload):
+			default:
+			}
+		}
+	})
+	pc.CreateDataChannel("input", nil)
+	offer, _ := pc.CreateOffer(nil)
+	gather := webrtc.GatheringCompletePromise(pc)
+	pc.SetLocalDescription(offer)
+	<-gather
+
+	res := result(t, r.send("stream.start", map[string]string{"offer": pc.LocalDescription().SDP, "source": "screen", "output": "eDP-1", "audio": "system"}, false))
+	if !res.OK {
+		t.Fatalf("stream.start: %+v", res)
+	}
+	var ans struct{ Answer string }
+	json.Unmarshal(res.Data, &ans)
+	if !strings.Contains(ans.Answer, "stereo=1") {
+		t.Fatalf("answer does not offer stereo:\n%s", ans.Answer)
+	}
+	pc.SetRemoteDescription(webrtc.SessionDescription{Type: webrtc.SDPTypeAnswer, SDP: ans.Answer})
+	// every RTP payload is exactly one Opus packet (60 bytes), never a whole page or a header
+	for i := 0; i < 4; i++ {
+		select {
+		case n := <-sizes:
+			if n != 60 {
+				t.Fatalf("audio payload %d bytes, want one 60 byte Opus packet", n)
+			}
+		case <-time.After(10 * time.Second):
+			t.Fatal("no audio arrived")
+		}
+	}
+	result(t, r.send("stream.stop", nil, false))
 }
