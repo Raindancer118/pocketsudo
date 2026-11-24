@@ -24,12 +24,12 @@ import (
 
 var version = "dev"
 
-const usage = `pocketdeck – control this machine from your phone
+const usage = `PocketHub (pocketdeck) – control this machine from your phone
 
   pocketdeck pair [--relay URL] [--name NAME] [--print-uri]
   pocketdeck run                 agent loop (what the user service runs)
   pocketdeck install-service     install + start the systemd user service
-  pocketdeck send [--zip] FILE…  send files or folders to the phone (Downloads/PocketDeck)
+  pocketdeck send [--zip] FILE…  send files or folders to the phone (Downloads/PocketHub)
   pocketdeck install-menu        add "Send to phone" to the file manager's right-click menu
   pocketdeck status
   pocketdeck selftest            read volume, brightness, media, lock state locally
@@ -81,9 +81,9 @@ func send(args []string) error {
 	err := sendFiles(fs.Args(), *zipAll)
 	if *notify {
 		if err != nil {
-			exec.Command("notify-send", "-a", "PocketDeck", "-i", "dialog-error", "Not sent to phone", err.Error()).Run()
+			exec.Command("notify-send", "-a", "PocketHub", "-i", "dialog-error", "Not sent to phone", err.Error()).Run()
 		} else {
-			exec.Command("notify-send", "-a", "PocketDeck", "-i", "smartphone", "Sent to phone", strings.Join(fs.Args(), "\n")).Run()
+			exec.Command("notify-send", "-a", "PocketHub", "-i", "smartphone", "Sent to phone", strings.Join(fs.Args(), "\n")).Run()
 		}
 	}
 	return err
@@ -218,7 +218,7 @@ func selftest() error {
 }
 
 const unit = `[Unit]
-Description=PocketDeck agent (control this machine from the paired phone)
+Description=PocketHub agent (control this machine from the paired phone)
 After=graphical-session.target network-online.target
 PartOf=graphical-session.target
 

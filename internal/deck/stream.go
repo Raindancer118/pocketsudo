@@ -261,8 +261,8 @@ func (a *Agent) streamStart(ctx context.Context, body json.RawMessage) (json.Raw
 		} else if req.Audio == "mic" {
 			what = "Kamera und Mikrofon"
 		}
-		a.sys.Start(ctx, "notify-send", "-a", "PocketDeck", "-u", "critical", "-t", "0",
-			"PocketDeck: "+what+" aktiv", "Wird gerade an "+a.cfg.DeviceName+" übertragen.")
+		a.sys.Start(ctx, "notify-send", "-a", "PocketHub", "-u", "critical", "-t", "0",
+			"PocketHub: "+what+" aktiv", "Wird gerade an "+a.cfg.DeviceName+" übertragen.")
 	}
 
 	a.switchVideo(st, mon, device)
@@ -301,7 +301,7 @@ func (a *Agent) endStream(st *streamer) {
 	st.pc.Close()
 	if st.notice {
 		st.notice = false
-		a.sys.Start(context.Background(), "notify-send", "-a", "PocketDeck", "PocketDeck", "Übertragung beendet.")
+		a.sys.Start(context.Background(), "notify-send", "-a", "PocketHub", "PocketHub", "Übertragung beendet.")
 	}
 }
 
@@ -349,11 +349,11 @@ func (a *Agent) streamSwitch(ctx context.Context, body json.RawMessage) (json.Ra
 	a.switchVideo(st, mon, device)
 	if device != "" && !wasCamera {
 		st.notice = true
-		a.sys.Start(ctx, "notify-send", "-a", "PocketDeck", "-u", "critical", "-t", "0",
-			"PocketDeck: Kamera aktiv", "Wird gerade an "+a.cfg.DeviceName+" übertragen.")
+		a.sys.Start(ctx, "notify-send", "-a", "PocketHub", "-u", "critical", "-t", "0",
+			"PocketHub: Kamera aktiv", "Wird gerade an "+a.cfg.DeviceName+" übertragen.")
 	} else if device == "" && wasCamera && !st.mic {
 		st.notice = false
-		a.sys.Start(ctx, "notify-send", "-a", "PocketDeck", "PocketDeck", "Kamera aus.")
+		a.sys.Start(ctx, "notify-send", "-a", "PocketHub", "PocketHub", "Kamera aus.")
 	}
 	w, h := mon.size()
 	if device != "" {

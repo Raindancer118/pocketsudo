@@ -607,9 +607,9 @@ func (a *Agent) typeText(ctx context.Context, body json.RawMessage) (json.RawMes
 func defaultDownloadDir() string {
 	home, _ := os.UserHomeDir()
 	if out, err := exec.Command("xdg-user-dir", "DOWNLOAD").Output(); err == nil && strings.TrimSpace(string(out)) != "" {
-		return filepath.Join(strings.TrimSpace(string(out)), "PocketDeck")
+		return filepath.Join(strings.TrimSpace(string(out)), "PocketHub")
 	}
-	return filepath.Join(home, "Downloads", "PocketDeck")
+	return filepath.Join(home, "Downloads", "PocketHub")
 }
 
 // screenshot seals one JPEG per monitor (left to right) into blobs.
@@ -732,7 +732,7 @@ func (a *Agent) filePut(ctx context.Context, body json.RawMessage) (json.RawMess
 		return nil, err
 	}
 	f.Close()
-	a.sys.Start(ctx, "notify-send", "-a", "PocketDeck", "Datei empfangen", filepath.Base(path))
+	a.sys.Start(ctx, "notify-send", "-a", "PocketHub", "Datei empfangen", filepath.Base(path))
 	return ok(map[string]string{"path": path})
 }
 

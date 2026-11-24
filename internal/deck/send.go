@@ -32,7 +32,7 @@ func (a *Agent) SendFiles(ctx context.Context, paths []string, zipAll bool) ([]s
 		abs = append(abs, ap)
 	}
 	if zipAll || len(abs) > maxSingleSends {
-		name := fmt.Sprintf("PocketDeck-%s.zip", time.Now().Format("2006-01-02-150405"))
+		name := fmt.Sprintf("PocketHub-%s.zip", time.Now().Format("2006-01-02-150405"))
 		if len(abs) == 1 {
 			name = filepath.Base(abs[0]) + ".zip"
 		}
