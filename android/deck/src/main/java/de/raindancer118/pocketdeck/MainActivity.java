@@ -57,11 +57,15 @@ public class MainActivity extends AppCompatActivity {
     private SeekBar volume, brightness;
     private boolean locked, dragging;
     private int tab;
+    private QuickSettings quick;
+    private int ticks;
     private String coverUrl;
     private final Runnable refresher = new Runnable() {
         @Override
         public void run() {
             refresh();
+            // settings ask several tools (nmcli, bluetoothctl …): every other tick, start tab only
+            if (tab == 0 && ticks++ % 2 == 0) quick.refresh();
             main.postDelayed(this, REFRESH_MS);
         }
     };
@@ -84,6 +88,7 @@ public class MainActivity extends AppCompatActivity {
         lockButton = findViewById(R.id.lock_button);
         lockLabel = findViewById(R.id.lock_label);
         message = findViewById(R.id.message);
+        quick = new QuickSettings(this, deck, text -> say(message, text));
         tabStart = findViewById(R.id.tab_start);
         tabRemote = findViewById(R.id.tab_remote);
         playingOn = findViewById(R.id.playing_on);
@@ -186,6 +191,7 @@ public class MainActivity extends AppCompatActivity {
         styleTab(tabStart, t == 0);
         styleTab(tabShortcuts, t == 1);
         styleTab(tabRemote, t == 2);
+        if (t == 0 && quick != null) quick.refresh();
     }
 
     // ---- shortcuts ----
