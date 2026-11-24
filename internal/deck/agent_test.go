@@ -157,8 +157,17 @@ func newRig(t *testing.T) *rig {
 	a.batteryDir = t.TempDir()
 	a.hostname = "eclipse"
 	ctx, cancel := context.WithCancel(context.Background())
-	t.Cleanup(cancel)
-	go a.Run(ctx)
+	done := make(chan struct{})
+	go func() {
+		a.Run(ctx)
+		close(done)
+	}()
+	// stop the agent and wait for it: it saves its cursor after answering, which
+	// must not race with the removal of the temp dirs (flaky on slow CI runners)
+	t.Cleanup(func() {
+		cancel()
+		<-done
+	})
 	return &rig{t: t, agent: a, sys: sys, key: key, phoneKey: phoneSign, phone: host.NewClient(srv.URL, phoneToken), channel: channel}
 }
 
