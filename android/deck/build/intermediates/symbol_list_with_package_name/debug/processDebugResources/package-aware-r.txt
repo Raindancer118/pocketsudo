@@ -1112,9 +1112,7 @@ string call_notification_screening_text
 string cancel
 string charging
 string clip_empty
-string clip_get
 string clip_got
-string clip_send
 string clip_sent
 string combos
 string common_google_play_services_enable_button
@@ -1175,8 +1173,6 @@ string not_paired
 string nothing_playing
 string offline
 string on_computer
-string open_keyboard
-string open_link
 string pair_compare
 string pair_confirm_there
 string pair_connecting
@@ -1205,6 +1201,13 @@ string status_bar_notification_info_overflow
 string tab_remote
 string tab_start
 string theme_toggle
+string tile_clip_get
+string tile_clip_send
+string tile_files
+string tile_keyboard
+string tile_open_link
+string tile_screenshot
+string tile_send_file
 string type_hint
 string type_send
 string unlock
@@ -1386,7 +1389,6 @@ style Platform_V21_AppCompat_Light
 style Platform_V25_AppCompat
 style Platform_V25_AppCompat_Light
 style Platform_Widget_AppCompat_Spinner
-style Row
 style RtlOverlay_DialogWindowTitle_AppCompat
 style RtlOverlay_Widget_AppCompat_ActionBar_TitleItem
 style RtlOverlay_Widget_AppCompat_DialogTitle_Icon
@@ -1502,6 +1504,7 @@ style ThemeOverlay_AppCompat_DayNight_ActionBar
 style ThemeOverlay_AppCompat_Dialog
 style ThemeOverlay_AppCompat_Dialog_Alert
 style ThemeOverlay_AppCompat_Light
+style Tile
 style Widget_AppCompat_ActionBar
 style Widget_AppCompat_ActionBar_Solid
 style Widget_AppCompat_ActionBar_TabBar

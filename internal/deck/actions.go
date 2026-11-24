@@ -450,7 +450,12 @@ var namedKeys = map[string]string{"enter": "Return", "return": "Return", "esc": 
 	"tab": "Tab", "backspace": "BackSpace", "delete": "Delete", "del": "Delete", "entf": "Delete", "space": "space",
 	"up": "Up", "down": "Down", "left": "Left", "right": "Right", "home": "Home", "end": "End",
 	"pageup": "Prior", "pagedown": "Next", "print": "Print", "insert": "Insert", "menu": "Menu",
-	"volumeup": "XF86AudioRaiseVolume", "volumedown": "XF86AudioLowerVolume", "mute": "XF86AudioMute"}
+	"volumeup": "XF86AudioRaiseVolume", "volumedown": "XF86AudioLowerVolume", "mute": "XF86AudioMute",
+	"capslock": "Caps_Lock",
+	// German layout and punctuation, as xkb keysym names (wtype maps them itself)
+	"ssharp": "ssharp", "adiaeresis": "adiaeresis", "odiaeresis": "odiaeresis", "udiaeresis": "udiaeresis",
+	"asciicircum": "asciicircum", "less": "less", "numbersign": "numbersign", "plus": "plus",
+	"comma": "comma", "period": "period", "minus": "minus", "dead_acute": "dead_acute"}
 
 func keysym(name string) (string, bool) {
 	n := strings.ToLower(name)

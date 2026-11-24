@@ -26,9 +26,6 @@
     <string name="play_pause">Play or pause</string>
     <string name="volume">Volume  %1$d %%</string>
     <string name="brightness">Brightness  %1$d %%</string>
-    <string name="clip_get">Get clipboard</string>
-    <string name="clip_send">Send clipboard</string>
-    <string name="open_link">Open link from clipboard</string>
     <string name="clip_got">Clipboard copied to this phone</string>
     <string name="clip_sent">Clipboard sent</string>
     <string name="clip_empty">The phone clipboard holds no text</string>
@@ -59,8 +56,6 @@
     <string name="keys">Keys</string>
     <string name="combos">Shortcuts</string>
     <string name="sent">Sent</string>
-    <string name="open_keyboard">Keyboard</string>
-    <string name="send_file">Send file</string>
     <string name="screenshot">Screenshot</string>
     <string name="share">Share</string>
     <string name="share_target">Send to computer</string>
@@ -76,4 +71,11 @@
     <string name="folder_empty">Empty folder</string>
     <string name="downloading">Downloading %1$s …</string>
     <string name="downloaded">%1$s in Downloads/PocketDeck</string>
+    <string name="tile_keyboard">Keyboard</string>
+    <string name="tile_files">Files</string>
+    <string name="tile_screenshot">Screenshot</string>
+    <string name="tile_send_file">Upload</string>
+    <string name="tile_clip_get">Get clipboard</string>
+    <string name="tile_clip_send">Send clipboard</string>
+    <string name="tile_open_link">Open link</string>
 </resources>

@@ -352,7 +352,7 @@ public class MainActivity extends AppCompatActivity {
 
     private void row(int id, int icon, Runnable action) {
         TextView t = findViewById(id);
-        t.setCompoundDrawablesRelativeWithIntrinsicBounds(icon, 0, 0, 0);
+        t.setCompoundDrawablesRelativeWithIntrinsicBounds(0, icon, 0, 0);
         t.setOnClickListener(v -> action.run());
     }
 

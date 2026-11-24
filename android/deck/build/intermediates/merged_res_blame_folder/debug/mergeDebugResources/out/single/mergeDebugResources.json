@@ -4,16 +4,20 @@
         "source": "/home/tom/.gradle/daemon/8.14.5/de.raindancer118.pocketdeck-main-37:/drawable/ic_launcher_mono.xml"
     },
     {
+        "merged": "de.raindancer118.pocketdeck-debug-35:/layout_view_remote.xml.flat",
+        "source": "de.raindancer118.pocketdeck-main-37:/layout/view_remote.xml"
+    },
+    {
         "merged": "/home/tom/.gradle/daemon/8.14.5/de.raindancer118.pocketdeck-debug-35:/layout_activity_screenshot.xml.flat",
         "source": "/home/tom/.gradle/daemon/8.14.5/de.raindancer118.pocketdeck-main-37:/layout/activity_screenshot.xml"
     },
     {
-        "merged": "/home/tom/.gradle/daemon/8.14.5/de.raindancer118.pocketdeck-debug-35:/drawable_ic_next.xml.flat",
-        "source": "/home/tom/.gradle/daemon/8.14.5/de.raindancer118.pocketdeck-main-37:/drawable/ic_next.xml"
-    },
-    {
         "merged": "/home/tom/.gradle/daemon/8.14.5/de.raindancer118.pocketdeck-debug-35:/drawable_bg_circle.xml.flat",
         "source": "/home/tom/.gradle/daemon/8.14.5/de.raindancer118.pocketdeck-main-37:/drawable/bg_circle.xml"
+    },
+    {
+        "merged": "/home/tom/.gradle/daemon/8.14.5/de.raindancer118.pocketdeck-debug-35:/drawable_ic_next.xml.flat",
+        "source": "/home/tom/.gradle/daemon/8.14.5/de.raindancer118.pocketdeck-main-37:/drawable/ic_next.xml"
     },
     {
         "merged": "/home/tom/.gradle/daemon/8.14.5/de.raindancer118.pocketdeck-debug-35:/drawable_ic_link.xml.flat",
@@ -106,10 +110,6 @@
     {
         "merged": "/home/tom/.gradle/daemon/8.14.5/de.raindancer118.pocketdeck-debug-35:/drawable_ic_home.xml.flat",
         "source": "/home/tom/.gradle/daemon/8.14.5/de.raindancer118.pocketdeck-main-37:/drawable/ic_home.xml"
-    },
-    {
-        "merged": "de.raindancer118.pocketdeck-debug-35:/layout_item_file.xml.flat",
-        "source": "de.raindancer118.pocketdeck-main-37:/layout/item_file.xml"
     },
     {
         "merged": "/home/tom/.gradle/daemon/8.14.5/de.raindancer118.pocketdeck-debug-35:/layout_activity_main.xml.flat",

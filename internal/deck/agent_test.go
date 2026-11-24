@@ -483,3 +483,21 @@ func TestFileBrowser(t *testing.T) {
 		t.Fatal("uploaded outside home")
 	}
 }
+
+func TestGermanKeysAndPunctuation(t *testing.T) {
+	r := newRig(t)
+	result(t, r.send("session.open", nil, true))
+	for combo, want := range map[string]string{
+		"ssharp":           "wtype -k ssharp",
+		"shift+udiaeresis": "wtype -M shift -k udiaeresis -m shift",
+		"plus":             "wtype -k plus",
+		"ctrl+minus":       "wtype -M ctrl -k minus -m ctrl",
+		"altgr+q":          "wtype -M altgr -k q -m altgr",
+		"capslock":         "wtype -k Caps_Lock",
+		"less":             "wtype -k less",
+	} {
+		if res := result(t, r.send("key", map[string]string{"combo": combo}, false)); !res.OK || !r.sys.ran(want) {
+			t.Errorf("%s: %+v (want %q)", combo, res, want)
+		}
+	}
+}

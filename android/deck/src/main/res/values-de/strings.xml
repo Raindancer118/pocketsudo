@@ -24,9 +24,6 @@
     <string name="play_pause">Abspielen oder pausieren</string>
     <string name="volume">Lautstärke  %1$d %%</string>
     <string name="brightness">Helligkeit  %1$d %%</string>
-    <string name="clip_get">Zwischenablage holen</string>
-    <string name="clip_send">Zwischenablage senden</string>
-    <string name="open_link">Link aus der Zwischenablage öffnen</string>
     <string name="clip_got">Zwischenablage aufs Handy kopiert</string>
     <string name="clip_sent">Zwischenablage gesendet</string>
     <string name="clip_empty">Die Zwischenablage des Handys enthält keinen Text</string>
@@ -57,8 +54,6 @@
     <string name="keys">Tasten</string>
     <string name="combos">Kombinationen</string>
     <string name="sent">Gesendet</string>
-    <string name="open_keyboard">Tastatur</string>
-    <string name="send_file">Datei senden</string>
     <string name="screenshot">Bildschirmfoto</string>
     <string name="share">Teilen</string>
     <string name="share_target">An den Computer senden</string>
@@ -74,4 +69,11 @@
     <string name="folder_empty">Leerer Ordner</string>
     <string name="downloading">Lädt %1$s …</string>
     <string name="downloaded">%1$s in Downloads/PocketDeck</string>
+    <string name="tile_keyboard">Tastatur</string>
+    <string name="tile_files">Dateien</string>
+    <string name="tile_screenshot">Foto</string>
+    <string name="tile_send_file">Hochladen</string>
+    <string name="tile_clip_get">Ablage holen</string>
+    <string name="tile_clip_send">Ablage senden</string>
+    <string name="tile_open_link">Link öffnen</string>
 </resources>
