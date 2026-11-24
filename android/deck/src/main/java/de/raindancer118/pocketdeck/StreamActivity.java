@@ -321,6 +321,8 @@ public class StreamActivity extends AppCompatActivity {
                 .setVideoEncoderFactory(new DefaultVideoEncoderFactory(egl.getEglBaseContext(), true, true))
                 .setAudioDeviceModule(audioModule())
                 .createPeerConnectionFactory();
+        // two restarts can race (session refresh, reconnect): init on a live renderer throws
+        video.release();
         video.init(egl.getEglBaseContext(), new RendererCommon.RendererEvents() {
             @Override
             public void onFirstFrameRendered() {
