@@ -389,3 +389,53 @@ func TestEncoderOrderFollowsGPUState(t *testing.T) {
 		result(t, r.send("stream.stop", nil, false))
 	}
 }
+
+// tsFeed is a live MPEG-TS capture like gpu-screen-recorder's: one frame per 33 ms.
+type tsFeed struct {
+	left int
+	buf  bytes.Buffer
+}
+
+func (f *tsFeed) Read(p []byte) (int, error) {
+	if f.buf.Len() == 0 {
+		if f.left == 0 {
+			return 0, io.EOF
+		}
+		f.left--
+		time.Sleep(33 * time.Millisecond)
+		f.buf.Write(tsStream([][]byte{annexB(1)}))
+	}
+	return f.buf.Read(p)
+}
+
+func (f *tsFeed) Close() error { return nil }
+
+// gpu-screen-recorder captures via KMS on the GPU (~4 % CPU instead of 14–27 %):
+// first choice when installed, its MPEG-TS is unpacked to H.264 for WebRTC.
+func TestScreenUsesGpuScreenRecorder(t *testing.T) {
+	r := newRig(t)
+	r.agent.iceServers = nil
+	r.agent.gsr = true
+	r.sys.out["hyprctl monitors -j"] = `[{"name":"eDP-1","x":0,"y":0,"width":1920,"height":1080,"scale":1}]`
+	r.sys.pipe = func(name string, args ...string) io.ReadCloser {
+		if name == "gpu-screen-recorder" {
+			return &tsFeed{left: 300}
+		}
+		return io.NopCloser(strings.NewReader(""))
+	}
+	result(t, r.send("session.open", nil, true))
+	pc, gotVideo, _ := newViewer(t)
+	res := result(t, r.send("stream.start", map[string]string{"offer": pc.LocalDescription().SDP, "source": "screen", "output": "eDP-1", "audio": "none"}, false))
+	var ans struct{ Answer string }
+	json.Unmarshal(res.Data, &ans)
+	pc.SetRemoteDescription(webrtc.SessionDescription{Type: webrtc.SDPTypeAnswer, SDP: ans.Answer})
+	select {
+	case <-gotVideo:
+	case <-time.After(10 * time.Second):
+		t.Fatal("no video from gpu-screen-recorder")
+	}
+	if !r.sys.ran("gpu-screen-recorder -w eDP-1 -c mpegts -k h264") || r.sys.ran("wf-recorder") {
+		t.Fatalf("calls: %v", r.sys.calls)
+	}
+	result(t, r.send("stream.stop", nil, false))
+}

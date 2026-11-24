@@ -3,6 +3,7 @@ package deck
 import (
 	"context"
 	"io"
+	"os/exec"
 
 	"crypto/ecdsa"
 	"encoding/base64"
@@ -60,6 +61,7 @@ type Agent struct {
 	iceServers   []webrtc.ICEServer
 	badEncoders  map[string]bool // "screen:vaapi" … that failed; skipped until restart
 	gpuAwake     func() bool     // NVIDIA GPU powered up: NVENC first
+	gsr          bool            // gpu-screen-recorder installed: first choice for the screen
 	encoderProbe time.Duration   // how long an encoder may take for its first bytes
 	maxSend      int64           // largest file "pocketdeck send" pushes (the relay's file limit)
 	velaShell    string          // vela's quickshell dir: DND and night light go through it
@@ -89,7 +91,7 @@ func NewAgent(cfg *Config, sys System, log *slog.Logger) (*Agent, error) {
 		client: host.NewClient(cfg.Relay, cfg.HostToken), guard: protocol.NewReplayGuard(),
 		batteryDir: "/sys/class/power_supply", hostname: hn, downloadDir: defaultDownloadDir(), home: homeDir(), iceServers: defaultICE(),
 		dataDirs: defaultDataDirs(), iconCache: defaultIconCache(), velaShell: defaultVelaShell(), maxSend: maxDownload,
-		badEncoders: map[string]bool{}, gpuAwake: nvidiaAwake, encoderProbe: 2500 * time.Millisecond}, nil
+		badEncoders: map[string]bool{}, gpuAwake: nvidiaAwake, gsr: hasCommand("gpu-screen-recorder"), encoderProbe: 2500 * time.Millisecond}, nil
 }
 
 // Run long-polls the host inbox until ctx ends.
@@ -316,4 +318,9 @@ func SelfTest(ctx context.Context, sys System, print func(any)) error {
 	apps := installedApps(defaultDataDirs())
 	print(map[string]int{"installed_apps": len(apps)})
 	return nil
+}
+
+func hasCommand(name string) bool {
+	_, err := exec.LookPath(name)
+	return err == nil
 }

@@ -158,6 +158,7 @@ func newRig(t *testing.T) *rig {
 	a.hostname = "eclipse"
 	a.velaShell = "" // the machine running the tests may have vela; tests opt in
 	a.gpuAwake = func() bool { return false }
+	a.gsr = false // installed on the dev machine, not on CI: tests opt in
 	ctx, cancel := context.WithCancel(context.Background())
 	done := make(chan struct{})
 	go func() {

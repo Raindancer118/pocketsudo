@@ -365,8 +365,9 @@ func (a *Agent) streamSwitch(ctx context.Context, body json.RawMessage) (json.Ra
 // pumpVideo feeds H.264 from wf-recorder (screen) or ffmpeg (camera) into the track.
 // encoder is one way to produce H.264 for a stream.
 type encoder struct {
-	name string // vaapi, nvenc, x264
+	name string // gsr, vaapi, nvenc, x264
 	cmd  []string
+	ts   bool // output is MPEG-TS, unpacked to Annex-B
 }
 
 func (a *Agent) pumpVideo(ctx context.Context, track *webrtc.TrackLocalStaticSample, mon monitor, device string) {
@@ -376,11 +377,11 @@ func (a *Agent) pumpVideo(ctx context.Context, track *webrtc.TrackLocalStaticSam
 		kind = "camera"
 		in := []string{"ffmpeg", "-hide_banner", "-loglevel", "error",
 			"-f", "v4l2", "-input_format", "mjpeg", "-framerate", "30", "-video_size", "1280x720", "-i", device}
-		vaapi = encoder{"vaapi", append(slices.Clone(in), "-vaapi_device", "/dev/dri/renderD128", "-vf", "format=nv12,hwupload",
+		vaapi = encoder{name: "vaapi", cmd: append(slices.Clone(in), "-vaapi_device", "/dev/dri/renderD128", "-vf", "format=nv12,hwupload",
 			"-c:v", "h264_vaapi", "-profile:v", "constrained_baseline", "-g", "30", "-bf", "0", "-f", "h264", "-")}
-		nvenc = encoder{"nvenc", append(slices.Clone(in), "-c:v", "h264_nvenc", "-preset", "p1", "-tune", "ull",
+		nvenc = encoder{name: "nvenc", cmd: append(slices.Clone(in), "-c:v", "h264_nvenc", "-preset", "p1", "-tune", "ull",
 			"-profile:v", "baseline", "-zerolatency", "1", "-g", "30", "-bf", "0", "-f", "h264", "-")}
-		x264 = encoder{"x264", append(slices.Clone(in), "-c:v", "libx264", "-preset", "ultrafast", "-tune", "zerolatency",
+		x264 = encoder{name: "x264", cmd: append(slices.Clone(in), "-c:v", "libx264", "-preset", "ultrafast", "-tune", "zerolatency",
 			"-profile:v", "baseline", "-pix_fmt", "yuv420p", "-g", "30", "-bf", "0", "-f", "h264", "-")}
 	} else {
 		kind = "screen"
@@ -388,11 +389,11 @@ func (a *Agent) pumpVideo(ctx context.Context, track *webrtc.TrackLocalStaticSam
 		// frame then costs ~20 bytes; the keyframes dominate, hence one every 5 s (~1 Mbit/s idle).
 		base := []string{"wf-recorder", "-o", mon.Name, "-D", "-m", "h264"}
 		tail := []string{"-r", "30", "-p", "g=150", "-p", "bf=0", "-p", "b=3M", "-f", "/dev/stdout", "-y"}
-		vaapi = encoder{"vaapi", slices.Concat(base, []string{"-c", "h264_vaapi", "-d", "/dev/dri/renderD128",
+		vaapi = encoder{name: "vaapi", cmd: slices.Concat(base, []string{"-c", "h264_vaapi", "-d", "/dev/dri/renderD128",
 			"-p", "profile=constrained_baseline", "-p", "maxrate=4M", "-p", "rc_mode=VBR"}, tail)}
-		nvenc = encoder{"nvenc", slices.Concat(base, []string{"-c", "h264_nvenc", "-p", "preset=p1", "-p", "tune=ull",
+		nvenc = encoder{name: "nvenc", cmd: slices.Concat(base, []string{"-c", "h264_nvenc", "-p", "preset=p1", "-p", "tune=ull",
 			"-p", "profile=baseline", "-p", "zerolatency=1"}, tail)}
-		x264 = encoder{"x264", slices.Concat(base, []string{"-c", "libx264", "-p", "preset=ultrafast", "-p", "tune=zerolatency",
+		x264 = encoder{name: "x264", cmd: slices.Concat(base, []string{"-c", "libx264", "-p", "preset=ultrafast", "-p", "tune=zerolatency",
 			"-p", "profile=baseline"}, tail)}
 	}
 	// NVENC is free while the NVIDIA GPU is awake anyway (compositor, vela …) but
@@ -401,12 +402,25 @@ func (a *Agent) pumpVideo(ctx context.Context, track *webrtc.TrackLocalStaticSam
 	if a.gpuAwake() {
 		cands = []encoder{nvenc, vaapi, x264}
 	}
-	rc := a.openEncoder(ctx, kind, cands)
+	if kind == "screen" && a.gsr {
+		// gpu-screen-recorder grabs the screen via KMS right on the GPU and picks the
+		// matching encoder itself: ~4 % CPU against 14–27 % for wf-recorder (which
+		// copies every frame through the CPU while the compositor runs on the dGPU)
+		gsr := encoder{name: "gsr", ts: true, cmd: []string{"gpu-screen-recorder", "-w", mon.Name,
+			"-c", "mpegts", "-k", "h264", "-f", "30", "-fm", "cfr", "-bm", "cbr", "-q", "3000",
+			"-keyint", "5", "-cursor", "yes"}}
+		cands = append([]encoder{gsr}, cands...)
+	}
+	rc, e := a.openEncoder(ctx, kind, cands)
 	if rc == nil {
 		return
 	}
 	defer rc.Close()
-	reader, err := h264reader.NewReader(rc)
+	var src io.Reader = rc
+	if e.ts {
+		src = tsVideo(rc)
+	}
+	reader, err := h264reader.NewReader(src)
 	if err != nil {
 		return
 	}
@@ -425,7 +439,7 @@ func (a *Agent) pumpVideo(ctx context.Context, track *webrtc.TrackLocalStaticSam
 // openEncoder starts the first encoder that delivers data. A driver or ffmpeg
 // update can break one (VAAPI with ffmpeg 9.1, Nov 2026); encoders that failed
 // are skipped for later streams until the agent restarts.
-func (a *Agent) openEncoder(ctx context.Context, kind string, cands []encoder) io.ReadCloser {
+func (a *Agent) openEncoder(ctx context.Context, kind string, cands []encoder) (io.ReadCloser, encoder) {
 	for _, e := range cands {
 		key := kind + ":" + e.name
 		a.mu.Lock()
@@ -449,13 +463,13 @@ func (a *Agent) openEncoder(ctx context.Context, kind string, cands []encoder) i
 				err = errors.New("no frame in time")
 			}
 			if err == nil {
-				return &encoderPipe{Reader: br, rc: rc, cancel: cancel}
+				return &encoderPipe{Reader: br, rc: rc, cancel: cancel}, e
 			}
 			rc.Close()
 		}
 		cancel()
 		if ctx.Err() != nil {
-			return nil
+			return nil, encoder{}
 		}
 		a.log.Warn("video encoder failed, trying the next", "kind", kind, "encoder", e.name, "err", err)
 		a.mu.Lock()
@@ -463,7 +477,7 @@ func (a *Agent) openEncoder(ctx context.Context, kind string, cands []encoder) i
 		a.mu.Unlock()
 	}
 	a.log.Warn("no video encoder works", "kind", kind)
-	return nil
+	return nil, encoder{}
 }
 
 type encoderPipe struct {
